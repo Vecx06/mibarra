@@ -33,8 +33,8 @@ Una barra para **Windows 10 y 11** que reemplaza a la barra de tareas: tus apps,
 ## Descargar e instalar
 
 1. Instala [Python](https://www.python.org/downloads/). Al instalarlo, **marca "Add Python to PATH"**.
-2. Descarga la última versión desde **[Releases](../../releases/latest)** (archivo `mibarra-X.Y.zip`) y descomprímelo.
-   También sirve el botón verde **Code → Download ZIP**.
+2. Entra a **[la última versión](../../releases/latest)**, descarga **Source code (zip)** y descomprímelo.
+   (También sirve el botón verde **Code → Download ZIP** de esta página.)
 3. Haz doble clic en **`instalar.bat`**.
 4. Haz doble clic en **`iniciar.bat`**.
 
