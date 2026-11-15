@@ -17,6 +17,7 @@ from PyQt6.QtGui import QColor, QIcon, QPainter, QPen
 from PyQt6.QtWidgets import QApplication, QFileIconProvider, QHBoxLayout, QWidget
 
 import config as configuracion
+import mas_widgets
 import estilo
 import sistema_windows as sw
 from widgets import (AnioTile, BandejaTile, BateriaTile, Caja, ClimaTile, CpuTile, DiscoTile,
@@ -221,6 +222,7 @@ class Dock(QWidget):
         self.vidrio = config.get("estilo") == "vidrio" and sw.ES_WINDOWS
         self.lado_boton = self.alto - 16
 
+        estilo.poner_tema(self._tema_resuelto())
         self.setWindowTitle("mibarra")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint
                             | Qt.WindowType.WindowStaysOnTopHint
@@ -333,8 +335,9 @@ class Dock(QWidget):
 
         hwnd = int(self.winId())
         quiere_vidrio = c.get("estilo") == "vidrio" and sw.ES_WINDOWS
-        if quiere_vidrio and not self.vidrio:
-            if sw.aplicar_vidrio(hwnd):
+        estilo.poner_tema(self._tema_resuelto())
+        if quiere_vidrio:
+            if sw.aplicar_vidrio(hwnd, 0x99, *estilo.TINTE_VIDRIO):
                 sw.redondear_esquinas(hwnd)
                 self.vidrio = True
         elif not quiere_vidrio and self.vidrio:
@@ -383,6 +386,20 @@ class Dock(QWidget):
             self.ventana_ajustes = Ajustes(self)
         self.ventana_ajustes.mostrar(pagina)
 
+    def _tema_resuelto(self):
+        tema = self.config.get("tema", "oscuro")
+        if tema == "auto":
+            return "claro" if sw.windows_usa_tema_claro() else "oscuro"
+        return tema if tema in ("oscuro", "claro") else "oscuro"
+
+    def _aplicar_tema(self):
+        estilo.poner_tema(self._tema_resuelto())
+        if self.vidrio:
+            sw.aplicar_vidrio(int(self.winId()), 0x99, *estilo.TINTE_VIDRIO)
+        self.update()
+        for hijo in self.findChildren(QWidget):
+            hijo.update()
+
     def _timer(self, cada_ms, funcion):
         t = QTimer(self)
         t.timeout.connect(funcion)
@@ -391,6 +408,8 @@ class Dock(QWidget):
 
     def _crear_widget(self, nombre):
         alto = self.lado_boton
+        if nombre in mas_widgets.CREADORES:
+            return mas_widgets.CREADORES[nombre](alto, self.config, arriba=self.abajo)
         if nombre == "reloj":
             return RelojTile(alto, hacia_arriba=self.abajo)
         if nombre == "cpu":
@@ -429,7 +448,7 @@ class Dock(QWidget):
         """Se llama justo después de mostrar la barra (cuando Windows ya le dio un HWND)."""
         hwnd = int(self.winId())
         if self.vidrio:
-            if sw.aplicar_vidrio(hwnd):
+            if sw.aplicar_vidrio(hwnd, 0x99, *estilo.TINTE_VIDRIO):
                 sw.redondear_esquinas(hwnd)
             else:
                 self.vidrio = False
@@ -491,6 +510,11 @@ class Dock(QWidget):
 
     def _vigilar(self):
         self.barra_windows.vigilar()
+        # En tema "auto", cada ~2 s revisamos si Windows cambió entre claro y oscuro
+        self._vueltas = getattr(self, "_vueltas", 0) + 1
+        if self.config.get("tema") == "auto" and self._vueltas % 5 == 0:
+            if (self._tema_resuelto() == "claro") != estilo.ES_CLARO:
+                self._aplicar_tema()
         if self.config.get("esconder_en_pantalla_completa", True):
             completa = sw.hay_pantalla_completa()
             if completa and self.isVisible():

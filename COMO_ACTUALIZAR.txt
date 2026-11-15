@@ -1,5 +1,5 @@
-CÓMO ACTUALIZAR mibarra 1.0 -> 1.1
-==================================
+CÓMO ACTUALIZAR mibarra a la 1.2
+================================
 
 Tu config.json NO viene en esta actualización, así que tus apps fijadas,
 widgets y colores se mantienen.
@@ -8,7 +8,9 @@ widgets y colores se mantienen.
 2. Abre este zip y copia TODOS los archivos de la carpeta "mibarra"
    dentro de tu carpeta mibarra de siempre (donde está tu config.json).
 3. Cuando Windows pregunte, elige "Reemplazar los archivos en el destino".
-4. Abre mibarra de nuevo con iniciar.bat.
-5. Clic derecho en un espacio vacío de la barra -> "Ajustes de mibarra…".
-
-No hace falta volver a correr instalar.bat: esta versión no usa librerías nuevas.
+4. (Opcional, recomendado) Vuelve a correr instalar.bat: instala lo necesario
+   para que los botones de Wi-Fi y Bluetooth enciendan y apaguen las radios.
+   Sin eso, esos botones abren los ajustes de Windows.
+5. Abre mibarra con iniciar.bat.
+6. Clic derecho en un espacio vacío de la barra -> "Ajustes de mibarra…" ->
+   Widgets, y agrega los nuevos. El tema claro está en Apariencia.

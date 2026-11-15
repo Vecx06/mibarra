@@ -57,11 +57,15 @@ ABE_TOP, ABE_BOTTOM = 1, 3
 KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP = 0x1, 0x2
 VK_MENU = 0x12          # Alt
 VK_LWIN = 0x5B          # tecla Windows
+VK_SHIFT = 0x10
+VK_SNAPSHOT = 0x2C      # tecla Imprimir pantalla
+VK_A = 0x41
 VK_D = 0x44
+VK_S = 0x53
 VK_X = 0x58
 VK_VOLUME_MUTE, VK_VOLUME_DOWN, VK_VOLUME_UP = 0xAD, 0xAE, 0xAF
 VK_MEDIA_NEXT, VK_MEDIA_PREV, VK_MEDIA_PLAY_PAUSE = 0xB0, 0xB1, 0xB3
-_TECLAS_EXTENDIDAS = {VK_LWIN, VK_VOLUME_MUTE, VK_VOLUME_DOWN, VK_VOLUME_UP,
+_TECLAS_EXTENDIDAS = {VK_LWIN, VK_SNAPSHOT, VK_VOLUME_MUTE, VK_VOLUME_DOWN, VK_VOLUME_UP,
                       VK_MEDIA_NEXT, VK_MEDIA_PREV, VK_MEDIA_PLAY_PAUSE}
 
 # Ventanas "de sistema" que no queremos mostrar como apps
@@ -122,6 +126,8 @@ if ES_WINDOWS:
     _firmar(user32.GetForegroundWindow, [], H)
     _firmar(user32.PostMessageW, [H, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM])
     _firmar(user32.keybd_event, [ctypes.c_ubyte, ctypes.c_ubyte, wintypes.DWORD, ctypes.c_size_t], None)
+    _firmar(user32.SendMessageTimeoutW, [H, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM,
+                                         wintypes.UINT, wintypes.UINT, ctypes.c_void_p], ctypes.c_size_t)
     _firmar(user32.FindWindowW, [wintypes.LPCWSTR, wintypes.LPCWSTR], H)
     _firmar(user32.FindWindowExW, [H, H, wintypes.LPCWSTR, wintypes.LPCWSTR], H)
     _firmar(user32.GetWindowRect, [H, ctypes.POINTER(wintypes.RECT)])
@@ -551,3 +557,55 @@ def poner_inicio_automatico(activar_inicio, comando):
                 winreg.DeleteValue(clave, _NOMBRE_INICIO)
             except FileNotFoundError:
                 pass
+
+
+# ----------------------------------------------------------------------------
+# Tema claro / oscuro de Windows (se guarda en el registro del usuario)
+# ----------------------------------------------------------------------------
+_RUTA_TEMA = r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+
+
+def windows_usa_tema_claro():
+    if not ES_WINDOWS:
+        return False
+    import winreg
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _RUTA_TEMA) as clave:
+            valor, _ = winreg.QueryValueEx(clave, "AppsUseLightTheme")
+            return bool(valor)
+    except OSError:
+        return False
+
+
+def poner_tema_windows(claro):
+    """Cambia Windows entero a modo claro u oscuro (apps y barra de sistema)."""
+    if not ES_WINDOWS:
+        return
+    import winreg
+    with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _RUTA_TEMA, 0, winreg.KEY_SET_VALUE) as clave:
+        winreg.SetValueEx(clave, "AppsUseLightTheme", 0, winreg.REG_DWORD, int(claro))
+        winreg.SetValueEx(clave, "SystemUsesLightTheme", 0, winreg.REG_DWORD, int(claro))
+    # Avisarle a todas las ventanas que el tema cambió
+    texto = ctypes.c_wchar_p("ImmersiveColorSet")
+    user32.SendMessageTimeoutW(0xFFFF, 0x001A, 0, ctypes.cast(texto, ctypes.c_void_p).value,
+                               0x0002, 200, None)
+
+
+# ----------------------------------------------------------------------------
+# Wi-Fi: nombre de la red conectada (usa el comando "netsh" de Windows)
+# ----------------------------------------------------------------------------
+def red_wifi():
+    """Devuelve el nombre (SSID) de la red Wi-Fi conectada, o "" si no hay."""
+    if not ES_WINDOWS:
+        return ""
+    import subprocess
+    try:
+        salida = subprocess.run(["netsh", "wlan", "show", "interfaces"], capture_output=True,
+                                timeout=5, creationflags=0x08000000).stdout   # 0x08000000 = sin ventana negra
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    for linea in salida.decode("cp850", errors="ignore").splitlines():
+        linea = linea.strip()
+        if linea.startswith("SSID") and ":" in linea:     # ojo: no confundir con "BSSID"
+            return linea.split(":", 1)[1].strip()
+    return ""

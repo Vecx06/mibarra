@@ -2,12 +2,14 @@
 
 Una barra para **Windows 10 y 11** que reemplaza a la barra de tareas: tus apps, las ventanas abiertas y widgets en vivo, todo en una sola barra. Hecha en **Python + PyQt6**, inspirada en docks como lumabar.
 
-![La barra](docs/barra.png)
+![Barra clara](docs/barra-clara.png)
+![Barra oscura](docs/barra-oscura.png)
 
 ## Qué trae
 
 - **Apps fijadas y abiertas**, agrupadas por programa. Un punto indica que la app está abierta y una rayita de color, que es la ventana activa.
-- **Widgets en vivo:** música, clima, velocidad de internet, CPU, RAM, disco, batería, volumen, reloj con calendario, progreso del año y un temporizador de estudio (Enfoque).
+- **21 widgets en vivo:** comando (abre programas, páginas, busca o calcula), notas, Wi-Fi/Bluetooth/modo avión, claro/oscuro de Windows, capturas de pantalla, anillos de batería y CPU, conversor de moneda, almacenamiento, música, clima, velocidad de internet, CPU, RAM, disco, batería, volumen, reloj con calendario, progreso del año y un temporizador de estudio (Enfoque).
+- **Tema claro, oscuro o automático** (sigue a Windows).
 - **Ajustes estilo Apple:** galería de widgets con buscador, apps fijadas, apariencia, comportamiento y clima. Los cambios se aplican al tiro.
 - **Modo edición:** mientras los Ajustes están abiertos, cada widget muestra un círculo rojo **−** para quitarlo.
 - **Efecto vidrio** (fondo borroso), color de acento a elección, barra abajo o arriba.
@@ -19,9 +21,11 @@ Una barra para **Windows 10 y 11** que reemplaza a la barra de tareas: tus apps,
 |---|---|
 | ![Ajustes: widgets](docs/ajustes-widgets.png) | ![Ajustes: comportamiento](docs/ajustes-comportamiento.png) |
 
-| Apariencia | Modo edición |
+| Apariencia | Moneda |
 |---|---|
-| ![Ajustes: apariencia](docs/ajustes-apariencia.png) | ![Modo edición](docs/barra-modo-edicion.png) |
+| ![Ajustes: apariencia](docs/ajustes-apariencia.png) | ![Ajustes: moneda](docs/ajustes-moneda.png) |
+
+![Modo edición](docs/barra-modo-edicion.png)
 
 > Las capturas usan apps y datos de ejemplo.
 
@@ -46,7 +50,8 @@ El manual completo está en [LEEME.md](LEEME.md).
 | `estilo.py` | Colores, letras y estilos de menús |
 | `dock.py` | La barra: inicio, íconos de apps, ubicación en pantalla, menús, modo edición |
 | `ajustes.py` | La ventana de Ajustes (interruptores, galería, buscador) |
-| `widgets.py` | Cada widget |
+| `widgets.py` | Los widgets básicos (y las clases base `Caja` y `Tile`) |
+| `mas_widgets.py` | Widgets de la 1.2: comando, notas, conexiones, tema, capturas, anillos, moneda, almacenamiento |
 | `sistema_windows.py` | Todo lo que habla con Windows usando `ctypes`: ventanas abiertas, ocultar la barra, reservar espacio, efecto vidrio, teclas multimedia |
 
 ## Limitaciones conocidas

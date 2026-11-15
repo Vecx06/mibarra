@@ -47,6 +47,8 @@ POR_DEFECTO = {
     "apps_fijadas": None,           # None = se llena con _apps_por_defecto()
     "widgets": ["musica", "clima", "red", "cpu", "ram", "bateria", "volumen", "bandeja", "reloj"],
     "clima": {"ciudad": "Santiago", "latitud": -33.45, "longitud": -70.66},
+    "tema": "oscuro",               # "oscuro", "claro" o "auto" (igual que Windows)
+    "moneda": {"cantidad": 1, "desde": "USD", "hacia": "CLP"},
 }
 
 

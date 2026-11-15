@@ -1,4 +1,17 @@
-# mibarra 1.1
+# mibarra 1.2
+
+## Novedades de la 1.2
+- **Tema claro** para la barra (y modo **Automático**, que sigue a Windows): Ajustes › Apariencia › Tema de la barra.
+- **9 widgets nuevos** (agrégalos en Ajustes › Widgets):
+  - **Comando:** escribe y aprieta Enter. `notepad` abre el programa, `youtube.com` abre la página, `?gatos` busca en Google, `=15*3` calcula.
+  - **Notas:** una nota rápida que se guarda sola (en `notas.txt`).
+  - **Conexiones:** Wi-Fi (con el nombre de tu red), Bluetooth y modo avión.
+  - **Claro / oscuro:** cambia TODO Windows entre modo claro y oscuro.
+  - **Capturas:** recortar (Win+Shift+S), capturar la pantalla entera y abrir la carpeta de capturas.
+  - **Anillo de batería** y **Anillo de CPU.**
+  - **Moneda:** conversor (por ejemplo 1 USD → CLP). Clic para invertir. Se configura en Ajustes › Moneda.
+  - **Almacenamiento:** GB libres en tu disco.
+
 
 ## Novedades de la 1.1
 - **Ajustes propios estilo Apple**: clic derecho en un espacio vacío de la barra → *Ajustes de mibarra…*. Ya no se abre el Bloc de notas.
@@ -55,7 +68,7 @@ Para usuarios avanzados, los mismos ajustes están en `config.json`:
 | `reservar_espacio` | Que las ventanas maximizadas no queden debajo | `true` / `false` |
 | `esconder_en_pantalla_completa` | Esconderse con juegos y videos | `true` / `false` |
 | `apps_fijadas` | Tus apps fijas | lista de `{"nombre": ..., "ruta": ...}` |
-| `widgets` | Qué widgets y en qué orden | `musica`, `clima`, `red`, `cpu`, `ram`, `disco`, `bateria`, `volumen`, `bandeja`, `enfoque`, `anio`, `reloj` |
+| `widgets` | Qué widgets y en qué orden | `musica`, `clima`, `red`, `cpu`, `ram`, `disco`, `bateria`, `volumen`, `bandeja`, `enfoque`, `anio`, `reloj`, `comando`, `notas`, `conexiones`, `tema`, `capturas`, `bateria_anillo`, `cpu_anillo`, `moneda`, `almacenamiento` |
 | `clima` | Ciudad del clima | `ciudad`, `latitud`, `longitud` |
 
 Ojo: en JSON los textos van entre comillas dobles, `true`/`false` van en minúscula, y cada línea lleva coma menos la última de cada bloque.
@@ -70,6 +83,7 @@ Ojo: en JSON los textos van entre comillas dobles, `true`/`false` van en minúsc
 | `dock.py` | La barra: inicio, íconos de apps, ubicación en pantalla, menús, modo edición |
 | `ajustes.py` | La ventana de Ajustes estilo Apple (interruptores, galería, buscador) |
 | `widgets.py` | Cada widget (reloj, CPU, RAM, red, batería, clima, música, volumen) |
+| `mas_widgets.py` | Los widgets de la 1.2 (comando, notas, conexiones, tema, capturas, anillos, moneda, almacenamiento) |
 | `sistema_windows.py` | Todo lo que habla con Windows con `ctypes`: ventanas abiertas, esconder la barra, reservar espacio, efecto vidrio, teclas |
 
 Lo recomendable es leerlos en ese orden.

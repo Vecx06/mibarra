@@ -211,7 +211,7 @@ class Tile(Caja):
 
         if hay_barra:
             p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(QColor(255, 255, 255, 28))
+            p.setBrush(estilo.PISTA)
             p.drawRoundedRect(QRectF(10, y, ancho, 3), 1.5, 1.5)
             lleno = ancho * max(0.0, min(100.0, self.progreso)) / 100
             p.setBrush(estilo.ROJO if self.alerta else estilo.ACENTO)

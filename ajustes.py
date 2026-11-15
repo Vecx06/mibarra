@@ -29,6 +29,7 @@ from PyQt6.QtWidgets import (QFileDialog, QFrame, QGraphicsDropShadowEffect, QGr
 import config as configuracion
 import estilo
 import sistema_windows as sw
+import mas_widgets
 from widgets import Tile, abrir
 
 AZUL = "#0a84ff"
@@ -58,7 +59,19 @@ CATALOGO = [
      ("The Weeknd", "Blinding Lights", 170, None, False)),
     ("volumen", "Volumen", "Rueda: subir y bajar. Clic: silenciar.", "Multimedia", ("", "🔊", 40, None, True)),
     ("clima", "Clima", "Temperatura de tu ciudad.", "Clima", ("Santiago", "⛅ 23°", 92, None, False)),
+    ("comando", "Comando", "Abre programas, páginas, busca en Google o calcula (=2+2).", "Productividad",
+     "comando"),
+    ("notas", "Notas", "Una nota rápida que se guarda sola.", "Productividad", "notas"),
+    ("conexiones", "Conexiones", "Wi-Fi, Bluetooth y modo avión.", "Controles", "conexiones"),
+    ("tema", "Claro / oscuro", "Cambia Windows entre modo claro y oscuro.", "Controles", "tema"),
+    ("capturas", "Capturas", "Recortar, capturar la pantalla y abrir la carpeta.", "Controles", "capturas"),
+    ("bateria_anillo", "Anillo de batería", "La batería como un anillo (solo notebooks).", "Sistema",
+     "bateria_anillo"),
+    ("cpu_anillo", "Anillo de CPU", "El procesador como un anillo.", "Sistema", "cpu_anillo"),
+    ("almacenamiento", "Almacenamiento", "Espacio libre en el disco.", "Sistema", "almacenamiento"),
+    ("moneda", "Moneda", "Conversor de moneda (ej. dólar a peso chileno).", "Finanzas", "moneda"),
 ]
+ORDEN_CATEGORIAS = ["Productividad", "Controles", "Reloj y fecha", "Sistema", "Multimedia", "Clima", "Finanzas"]
 NOMBRES = {c[0]: c[1] for c in CATALOGO}
 
 COLORES_ACENTO = ["#0a84ff", "#bf5af2", "#ff375f", "#ff9f0a", "#30d158", "#64d2ff", "#8e8e93"]
@@ -268,25 +281,35 @@ class MuestraColor(QWidget):
 
 
 class VistaPrevia(QWidget):
-    """Un pedacito de barra oscura con el widget de ejemplo adentro."""
+    """Un pedacito de barra con el widget de ejemplo adentro."""
 
-    def __init__(self, titulo, valor, ancho, progreso, centrado):
+    def __init__(self, ejemplo, config=None):
         super().__init__()
         self.setFixedHeight(64)
         capa = QHBoxLayout(self)
         capa.setContentsMargins(0, 0, 0, 0)
         capa.addStretch()
-        tile = Tile(ancho, 40, titulo, valor, centrado)
-        tile.progreso = progreso
-        tile.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-        capa.addWidget(tile)
+        if isinstance(ejemplo, str):
+            # Un widget de verdad, en "modo demo" (datos de ejemplo, sin conectarse a nada)
+            widget = mas_widgets.CREADORES[ejemplo](40, dict(config or {}), demo=True)
+            widget.actualizar()
+        else:
+            titulo, valor, ancho, progreso, centrado = ejemplo
+            widget = Tile(ancho, 40, titulo, valor, centrado)
+            widget.progreso = progreso
+        widget.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        for hijo in widget.findChildren(QWidget):
+            hijo.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        capa.addWidget(widget)
         capa.addStretch()
 
     def paintEvent(self, evento):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(QColor(28, 28, 34))
+        fondo = QColor(estilo.FONDO_SOLIDO)
+        fondo.setAlpha(255)
+        p.setBrush(fondo)
         p.drawRoundedRect(QRectF(self.rect()), 12, 12)
         p.end()
 
@@ -380,6 +403,7 @@ class Ajustes(QWidget):
         ("apariencia", "Apariencia", "#bf5af2", "◐"),
         ("comportamiento", "Comportamiento", "#8e8e93", "⚙"),
         ("clima", "Clima", "#64d2ff", "☀"),
+        ("moneda", "Moneda", "#ffcc00", "$"),
         ("acerca", "Acerca de", "#30d158", "i"),
     ]
 
@@ -438,7 +462,7 @@ class Ajustes(QWidget):
             capa_lateral.addWidget(b)
             self.botones_nav[clave] = b
         capa_lateral.addStretch()
-        capa_lateral.addWidget(etiqueta("mibarra 1.1", "suave"))
+        capa_lateral.addWidget(etiqueta("mibarra 1.2", "suave"))
         principal.addWidget(lateral)
 
         # --- Contenido ---
@@ -580,10 +604,7 @@ class Ajustes(QWidget):
 
         # 2) Galería por categoría (filtrada por el buscador)
         filtro = self.campo_buscar.text().strip().lower()
-        categorias = []
-        for item in CATALOGO:
-            if item[3] not in categorias:
-                categorias.append(item[3])
+        categorias = list(ORDEN_CATEGORIAS)
         hubo_alguno = False
         for categoria in categorias:
             items = [it for it in CATALOGO if it[3] == categoria
@@ -596,8 +617,8 @@ class Ajustes(QWidget):
             grilla.setSpacing(12)
             for n, (id_widget, nombre, descripcion, _, ejemplo) in enumerate(items):
                 grilla.addWidget(self._tarjeta_widget(id_widget, nombre, descripcion, ejemplo,
-                                                      id_widget in activos), n // 3, n % 3)
-            for columna in range(3):
+                                                      id_widget in activos), n // 2, n % 2)
+            for columna in range(2):
                 grilla.setColumnStretch(columna, 1)
             capa.addLayout(grilla)
         if not hubo_alguno:
@@ -609,7 +630,7 @@ class Ajustes(QWidget):
         c = QVBoxLayout(t)
         c.setContentsMargins(12, 12, 12, 12)
         c.setSpacing(6)
-        c.addWidget(VistaPrevia(*ejemplo))
+        c.addWidget(VistaPrevia(ejemplo, self.dock.config))
         c.addWidget(etiqueta(nombre, "negrita"))
         c.addWidget(etiqueta(descripcion, "suave"))
         b = boton("✓ En la barra" if activo else "＋ Agregar", "pill" if activo else "pillAzul")
@@ -741,6 +762,12 @@ class Ajustes(QWidget):
         posicion = Segmentado([("abajo", "Abajo"), ("arriba", "Arriba")], cfg.get("posicion", "abajo"))
         posicion.cambiado.connect(lambda v: self._poner("posicion", v, "todo"))
         c.addWidget(fila("Posición", "En qué borde de la pantalla va la barra.", posicion))
+        c.addWidget(linea())
+
+        tema = Segmentado([("oscuro", "Oscuro"), ("claro", "Claro"), ("auto", "Automático")],
+                          cfg.get("tema", "oscuro"))
+        tema.cambiado.connect(lambda v: self._poner("tema", v, "todo", refrescar=True))
+        c.addWidget(fila("Tema de la barra", "Automático = igual que Windows.", tema))
         c.addWidget(linea())
 
         fondo = Segmentado([("vidrio", "Vidrio"), ("solido", "Sólido")], cfg.get("estilo", "vidrio"))
@@ -880,12 +907,74 @@ class Ajustes(QWidget):
         self.refrescar()
 
     # -------------------------------------------------------------------------
+    # Página: Moneda
+    # -------------------------------------------------------------------------
+    MONEDAS = [("CLP", "Peso chileno"), ("USD", "Dólar"), ("EUR", "Euro"), ("ARS", "Peso argentino"),
+               ("PEN", "Sol peruano"), ("MXN", "Peso mexicano"), ("BRL", "Real"), ("JPY", "Yen")]
+
+    def _pagina_moneda(self, capa):
+        m = self.dock.config.setdefault("moneda", {"cantidad": 1, "desde": "USD", "hacia": "CLP"})
+        if "moneda" not in self.dock.config.get("widgets", []):
+            aviso, ca = tarjeta()
+            renglon = QHBoxLayout()
+            renglon.addWidget(etiqueta("El widget Moneda no está en tu barra.", "suave"), 1)
+            agregar = boton("＋ Agregar a la barra", "pillAzul")
+            agregar.clicked.connect(lambda: self._alternar_widget("moneda"))
+            renglon.addWidget(agregar)
+            ca.addLayout(renglon)
+            capa.addWidget(aviso)
+
+        t, c = tarjeta()
+        self.campo_cantidad = QLineEdit(f"{float(m.get('cantidad', 1)):g}")
+        self.campo_desde = QLineEdit(m.get("desde", "USD"))
+        self.campo_hacia = QLineEdit(m.get("hacia", "CLP"))
+        for campo, ancho in ((self.campo_cantidad, 100), (self.campo_desde, 80), (self.campo_hacia, 80)):
+            campo.setObjectName("campo")
+            campo.setFixedWidth(ancho)
+        self.campo_desde.setMaxLength(3)
+        self.campo_hacia.setMaxLength(3)
+        c.addWidget(fila("Cantidad", "Cuánto quieres convertir.", self.campo_cantidad))
+        c.addWidget(linea())
+        c.addWidget(fila("Desde", "Código de 3 letras, ej. USD.", self.campo_desde))
+        c.addWidget(linea())
+        c.addWidget(fila("Hacia", "Código de 3 letras, ej. CLP.", self.campo_hacia))
+        capa.addWidget(t)
+
+        capa.addWidget(etiqueta("Monedas comunes (clic para usar como destino)", "seccion"))
+        t2, c2 = tarjeta()
+        grilla = QGridLayout()
+        grilla.setSpacing(8)
+        for n, (codigo, nombre) in enumerate(self.MONEDAS):
+            b = boton(f"{codigo} · {nombre}", "pill")
+            b.clicked.connect(lambda _, cod=codigo: self.campo_hacia.setText(cod))
+            grilla.addWidget(b, n // 4, n % 4)
+        c2.addLayout(grilla)
+        capa.addWidget(t2)
+
+        guardar = boton("Guardar", "pillAzul")
+        guardar.clicked.connect(self._guardar_moneda)
+        capa.addWidget(guardar, 0, Qt.AlignmentFlag.AlignLeft)
+
+    def _guardar_moneda(self):
+        try:
+            cantidad = float(self.campo_cantidad.text().replace(",", "."))
+        except ValueError:
+            cantidad = 1
+        self.dock.config["moneda"] = {
+            "cantidad": cantidad,
+            "desde": (self.campo_desde.text().strip().upper() or "USD")[:3],
+            "hacia": (self.campo_hacia.text().strip().upper() or "CLP")[:3],
+        }
+        self._guardar("widgets")
+        self.refrescar()
+
+    # -------------------------------------------------------------------------
     # Página: Acerca de
     # -------------------------------------------------------------------------
     def _pagina_acerca(self, capa):
         t, c = tarjeta()
         c.addWidget(etiqueta("mibarra", "titulo"))
-        c.addWidget(etiqueta("Versión 1.1 · Hecha en Python con PyQt6", "suave"))
+        c.addWidget(etiqueta("Versión 1.2 · Hecha en Python con PyQt6", "suave"))
         c.addWidget(etiqueta("Una barra para Windows con tus apps y widgets en vivo. "
                              "Todo se guarda en config.json, en la carpeta de mibarra."))
         capa.addWidget(t)

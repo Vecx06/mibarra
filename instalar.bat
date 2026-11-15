@@ -14,9 +14,9 @@ if errorlevel 1 (
   exit /b 1
 )
 echo.
-echo (Opcional) Soporte para ver que cancion esta sonando...
-python -m pip install winrt-runtime winrt-Windows.Foundation winrt-Windows.Media.Control
-if errorlevel 1 echo   No se pudo instalar, pero no importa: los botones de musica igual funcionan.
+echo (Opcional) Soporte para la cancion que suena y para encender/apagar Wi-Fi y Bluetooth...
+python -m pip install winrt-runtime winrt-Windows.Foundation winrt-Windows.Media.Control winrt-Windows.Devices.Radios
+if errorlevel 1 echo   No se pudo instalar, pero no importa: los botones igual funcionan.
 echo.
 echo Listo. Ahora haz doble clic en iniciar.bat
 pause
