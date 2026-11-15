@@ -1,0 +1,6 @@
+# Archivos que se crean solos en cada PC (no se suben)
+config.json
+estado_barra_windows.json
+error.log
+__pycache__/
+*.pyc
