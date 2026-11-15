@@ -19,8 +19,9 @@ from PyQt6.QtWidgets import QApplication, QFileIconProvider, QHBoxLayout, QWidge
 import config as configuracion
 import estilo
 import sistema_windows as sw
-from widgets import (BandejaTile, BateriaTile, Caja, ClimaTile, CpuTile, MusicaWidget, RamTile,
-                     RedTile, RelojTile, VolumenTile, abrir, crear_menu, recortar)
+from widgets import (AnioTile, BandejaTile, BateriaTile, Caja, ClimaTile, CpuTile, DiscoTile,
+                     EnfoqueTile, InsigniaQuitar, MusicaWidget, RamTile, RedTile, RelojTile,
+                     VolumenTile, abrir, crear_menu, recortar)
 
 # =============================================================================
 # Íconos de programas
@@ -230,40 +231,157 @@ class Dock(QWidget):
         self.espacio = None
         self.ultima_activa = None
         self.botones = {}
+        self.widgets = []
         self._firma = None
         self._escondida = False
         self._limpio = False
+        self._modo_edicion = False
+        self.ventana_ajustes = None
 
-        # --- Armar la fila de cosas ---
-        capa = QHBoxLayout(self)
-        capa.setContentsMargins(10, 8, 6, 8)
-        capa.setSpacing(6)
+        # La fila principal. Su contenido se arma en _armar_todo() (y se puede rearmar en vivo)
+        self.capa = QHBoxLayout(self)
+        self.capa.setContentsMargins(10, 8, 6, 8)
+        self.capa.setSpacing(6)
+        self._armar_todo()
 
-        capa.addWidget(BotonInicio(self.lado_boton))
-        capa.addWidget(Separador())
+        # --- Relojes internos (timers) ---
+        self._timer(1000, self._actualizar_widgets)
+        self._timer(700, self._refrescar_apps)
+        self._timer(400, self._vigilar)      # rápido, para esconderse apenas pongas pantalla completa
+
+        self._refrescar_apps()
+        self._actualizar_widgets()
+
+    # -------------------------------------------------------------------------
+    # Armar (y rearmar) el contenido de la barra
+    # -------------------------------------------------------------------------
+    @staticmethod
+    def _vaciar(capa):
+        """Saca y borra todo lo que hay dentro de una capa (layout)."""
+        while capa.count():
+            item = capa.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+    def _detener_widgets(self):
+        for w in self.widgets:
+            if hasattr(w, "detener"):
+                w.detener()     # que los hilos (clima, música) dejen de trabajar
+        self.widgets = []
+
+    def _armar_todo(self):
+        """[Inicio] | [apps] ...espacio... [widgets] [escritorio]"""
+        self._detener_widgets()
+        self._vaciar(self.capa)
+
+        self.capa.addWidget(BotonInicio(self.lado_boton))
+        self.capa.addWidget(Separador())
 
         self.zona_apps = QWidget()
         self.capa_apps = QHBoxLayout(self.zona_apps)
         self.capa_apps.setContentsMargins(0, 0, 0, 0)
         self.capa_apps.setSpacing(4)
-        capa.addWidget(self.zona_apps)
-        capa.addStretch()
+        self.capa.addWidget(self.zona_apps)
+        self.capa.addStretch()
 
-        self.widgets = []
-        for nombre in config.get("widgets", []):
+        self.zona_widgets = QWidget()
+        self.capa_widgets = QHBoxLayout(self.zona_widgets)
+        self.capa_widgets.setContentsMargins(0, 0, 0, 0)
+        self.capa_widgets.setSpacing(6)
+        self.capa.addWidget(self.zona_widgets)
+
+        self.capa.addWidget(BotonEscritorio(self.lado_boton))
+
+        self.botones = {}
+        self._firma = None
+        self._armar_widgets()
+
+    def _armar_widgets(self):
+        self._detener_widgets()
+        self._vaciar(self.capa_widgets)
+        for nombre in self.config.get("widgets", []):
             w = self._crear_widget(nombre)
             if w is not None:
-                capa.addWidget(w)
+                w.id_widget = nombre
+                self.capa_widgets.addWidget(w)
                 self.widgets.append(w)
-        capa.addWidget(BotonEscritorio(self.lado_boton))
-
-        # --- Relojes internos (timers) ---
-        self._timer(1000, self._actualizar_widgets)
-        self._timer(700, self._refrescar_apps)
-        self._timer(1000, self._vigilar)
-
-        self._refrescar_apps()
+        if self._modo_edicion:
+            self._poner_insignias()
         self._actualizar_widgets()
+
+    # -------------------------------------------------------------------------
+    # Aplicar cambios hechos en la ventana de Ajustes (sin reiniciar)
+    # -------------------------------------------------------------------------
+    def aplicar_config(self, que="todo"):
+        """que = "apps" | "widgets" | "todo" """
+        configuracion.guardar(self.config)
+        if que == "apps":
+            self._firma = None
+            self._refrescar_apps()
+            return
+        if que == "widgets":
+            self._armar_widgets()
+            return
+
+        c = self.config
+        self.abajo = c.get("posicion", "abajo") != "arriba"
+        self.alto = int(c.get("alto", 56))
+        self.margen = int(c.get("margen", 8))
+        self.lado_boton = self.alto - 16
+        estilo.poner_acento(c.get("color_acento", "#7aa2ff"))
+        QApplication.instance().setStyleSheet(estilo.hoja_global())
+
+        hwnd = int(self.winId())
+        quiere_vidrio = c.get("estilo") == "vidrio" and sw.ES_WINDOWS
+        if quiere_vidrio and not self.vidrio:
+            if sw.aplicar_vidrio(hwnd):
+                sw.redondear_esquinas(hwnd)
+                self.vidrio = True
+        elif not quiere_vidrio and self.vidrio:
+            sw.quitar_vidrio(hwnd)
+            self.vidrio = False
+
+        if c.get("ocultar_barra_windows", True) and not self.barra_windows.oculta:
+            self.barra_windows.ocultar()
+        elif not c.get("ocultar_barra_windows", True) and self.barra_windows.oculta:
+            self.barra_windows.restaurar()
+        if not c.get("reservar_espacio", True) and self.espacio is not None:
+            self.espacio.liberar()
+
+        self._armar_todo()
+        self._refrescar_apps()
+        self.ubicar()
+        self.update()
+
+    # -------------------------------------------------------------------------
+    # Modo edición (mientras los Ajustes están abiertos)
+    # -------------------------------------------------------------------------
+    def modo_edicion(self, activo):
+        self._modo_edicion = activo
+        if activo:
+            self._poner_insignias()
+        else:
+            for w in self.widgets:
+                for insignia in w.findChildren(InsigniaQuitar):
+                    insignia.deleteLater()
+
+    def _poner_insignias(self):
+        for w in self.widgets:
+            if not w.findChildren(InsigniaQuitar):
+                InsigniaQuitar(w, lambda nombre=w.id_widget: self.quitar_widget(nombre))
+
+    def quitar_widget(self, nombre):
+        if nombre in self.config.get("widgets", []):
+            self.config["widgets"].remove(nombre)
+            self.aplicar_config("widgets")
+            if self.ventana_ajustes is not None:
+                self.ventana_ajustes.refrescar()
+
+    def abrir_ajustes(self, pagina=None):
+        from ajustes import Ajustes   # se importa aquí para no cargarlo si nunca se usa
+        if self.ventana_ajustes is None:
+            self.ventana_ajustes = Ajustes(self)
+        self.ventana_ajustes.mostrar(pagina)
 
     def _timer(self, cada_ms, funcion):
         t = QTimer(self)
@@ -289,6 +407,12 @@ class Dock(QWidget):
             return MusicaWidget(alto)
         if nombre == "volumen":
             return VolumenTile(alto)
+        if nombre == "disco":
+            return DiscoTile(alto)
+        if nombre == "anio":
+            return AnioTile(alto)
+        if nombre == "enfoque":
+            return EnfoqueTile(alto)
         if nombre == "bandeja":
             if not self.config.get("ocultar_barra_windows", True):
                 return None   # si la barra de Windows queda visible, este botón no hace falta
@@ -514,24 +638,19 @@ class Dock(QWidget):
     # -------------------------------------------------------------------------
     def contextMenuEvent(self, evento):
         menu = crear_menu(self)
-        ajustes = menu.addAction("Abrir ajustes (config.json)")
+        ajustes = menu.addAction("Ajustes de mibarra…")
+        editar = menu.addAction("Editar widgets…")
+        menu.addSeparator()
         recargar = menu.addAction("Recargar mibarra")
-        menu.addSeparator()
-        inicio = menu.addAction("Iniciar con Windows")
-        inicio.setCheckable(True)
-        inicio.setChecked(sw.inicio_automatico_activo())
-        inicio.setEnabled(sw.ES_WINDOWS)
-        menu.addSeparator()
         salir = menu.addAction("Cerrar mibarra")
 
         elegida = menu.exec(evento.globalPos())
         if elegida is ajustes:
-            if sw.ES_WINDOWS:
-                QProcess.startDetached("notepad.exe", [str(configuracion.RUTA_CONFIG)])
+            self.abrir_ajustes()
+        elif elegida is editar:
+            self.abrir_ajustes("widgets")
         elif elegida is recargar:
             self.reiniciar()
-        elif elegida is inicio:
-            sw.poner_inicio_automatico(inicio.isChecked(), self._comando_inicio())
         elif elegida is salir:
             QApplication.quit()
 

@@ -34,6 +34,10 @@ ARCHIVO_ESTADO = Path(__file__).resolve().parent / "estado_barra_windows.json"
 # ----------------------------------------------------------------------------
 GW_OWNER = 4
 GWL_EXSTYLE = -20
+GWL_STYLE = -16
+WS_CAPTION = 0x00C00000
+# Respuestas de SHQueryUserNotificationState
+QUNS_BUSY, QUNS_RUNNING_D3D_FULL_SCREEN, QUNS_PRESENTATION_MODE = 2, 3, 4
 WS_EX_TOOLWINDOW = 0x00000080
 SW_HIDE, SW_SHOW, SW_MINIMIZE, SW_RESTORE = 0, 5, 6, 9
 WM_CLOSE = 0x0010
@@ -128,6 +132,7 @@ if ES_WINDOWS:
             [wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR, ctypes.POINTER(wintypes.DWORD)])
     _firmar(kernel32.CloseHandle, [wintypes.HANDLE])
     _firmar(shell32.SHAppBarMessage, [wintypes.DWORD, ctypes.POINTER(APPBARDATA)], ctypes.c_size_t)
+    _firmar(shell32.SHQueryUserNotificationState, [ctypes.POINTER(ctypes.c_int)], ctypes.c_long)
     _firmar(dwmapi.DwmGetWindowAttribute, [H, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD], ctypes.c_long)
     _firmar(dwmapi.DwmSetWindowAttribute, [H, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD], ctypes.c_long)
     # Esta función no está documentada oficialmente; si no existe, el vidrio simplemente no se usa
@@ -279,13 +284,33 @@ def presionar_teclas(*codigos):
 
 
 def hay_pantalla_completa():
-    """¿La ventana del frente ocupa TODO el monitor? (juego, video en pantalla completa...)"""
+    """
+    ¿Hay algo en pantalla completa? (video de YouTube, juego, presentación...)
+
+    Usamos dos métodos:
+      1. Le preguntamos a Windows directamente (SHQueryUserNotificationState).
+         Es lo mismo que usa Windows para no mostrar notificaciones mientras ves un video.
+      2. Revisamos si la ventana del frente tapa TODO el monitor.
+    """
     if not ES_WINDOWS:
         return False
+
+    # Método 1
+    estado = ctypes.c_int(0)
+    if shell32.SHQueryUserNotificationState(ctypes.byref(estado)) == 0:
+        if estado.value in (QUNS_BUSY, QUNS_RUNNING_D3D_FULL_SCREEN, QUNS_PRESENTATION_MODE):
+            hwnd = user32.GetForegroundWindow()
+            if hwnd and not es_mia(hwnd) and _clase(hwnd) not in CLASES_IGNORADAS:
+                return True
+
+    # Método 2
     hwnd = user32.GetForegroundWindow()
     if not hwnd or _clase(hwnd) in CLASES_IGNORADAS or es_mia(hwnd):
         return False
-    if user32.IsZoomed(hwnd):   # una ventana maximizada normal NO es pantalla completa
+    # Ojo: un navegador en pantalla completa puede seguir marcado como "maximizado".
+    # La diferencia es que una ventana maximizada NORMAL tiene barra de título (WS_CAPTION).
+    estilo_ventana = user32.GetWindowLongW(hwnd, GWL_STYLE)
+    if user32.IsZoomed(hwnd) and (estilo_ventana & WS_CAPTION) == WS_CAPTION:
         return False
     r = wintypes.RECT()
     user32.GetWindowRect(hwnd, ctypes.byref(r))
@@ -313,6 +338,19 @@ def aplicar_vidrio(hwnd, alfa=0x99, r=20, g=20, b=26):
     datos.Data = ctypes.addressof(acento)
     datos.SizeOfData = ctypes.sizeof(acento)
     return bool(_SetWindowCompositionAttribute(hwnd, ctypes.byref(datos)))
+
+
+def quitar_vidrio(hwnd):
+    """Vuelve al fondo normal (sin borroso)."""
+    if not ES_WINDOWS or _SetWindowCompositionAttribute is None:
+        return
+    acento = ACCENTPOLICY()
+    acento.AccentState = 0                       # 0 = desactivado
+    datos = WINCOMPATTRDATA()
+    datos.Attribute = 19
+    datos.Data = ctypes.addressof(acento)
+    datos.SizeOfData = ctypes.sizeof(acento)
+    _SetWindowCompositionAttribute(hwnd, ctypes.byref(datos))
 
 
 def redondear_esquinas(hwnd):

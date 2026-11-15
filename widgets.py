@@ -23,7 +23,7 @@ from datetime import datetime
 import psutil
 from PyQt6.QtCore import QDate, QLocale, QObject, QPoint, QPointF, QRectF, Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFontMetrics, QPainter, QPolygonF, QTextCharFormat
-from PyQt6.QtWidgets import (QCalendarWidget, QFrame, QLabel, QMenu,
+from PyQt6.QtWidgets import (QApplication, QCalendarWidget, QFrame, QLabel, QMenu,
                              QVBoxLayout, QWidget, QHBoxLayout)
 
 import estilo
@@ -85,12 +85,16 @@ class TrabajoRepetido(QObject):
         self.funcion = funcion
         self.cada = cada
         self.cada_si_falla = cada_si_falla or cada
+        self.activo = True
+
+    def detener(self):
+        self.activo = False
 
     def empezar(self):
         threading.Thread(target=self._bucle, daemon=True).start()
 
     def _bucle(self):
-        while True:
+        while self.activo:
             try:
                 dato = self.funcion()
                 espera = self.cada
@@ -101,7 +105,10 @@ class TrabajoRepetido(QObject):
                 self.resultado.emit(dato)
             except RuntimeError:     # la barra ya se cerró
                 return
-            time.sleep(espera)
+            # Dormir de a poquito, para poder detenernos rápido si nos lo piden
+            fin = time.monotonic() + espera
+            while self.activo and time.monotonic() < fin:
+                time.sleep(0.25)
 
 
 # =============================================================================
@@ -425,6 +432,9 @@ class ClimaTile(Tile):
     def actualizar(self):
         pass   # el clima se actualiza solo, cada 15 minutos
 
+    def detener(self):
+        self.trabajo.detener()
+
 
 # =============================================================================
 # Música
@@ -534,6 +544,10 @@ class MusicaWidget(Caja):
         self.b_play.update()
         self.update()
 
+    def detener(self):
+        if HAY_INFO_MUSICA:
+            self.trabajo.detener()
+
     def pintar(self, p):
         ancho = self.b_prev.x() - 14
         f1 = estilo.fuente(12, negrita=True)
@@ -590,3 +604,120 @@ class BandejaTile(Tile):
 
     def actualizar(self):
         pass
+
+
+# =============================================================================
+# Widgets extra: disco, progreso del año, enfoque
+# =============================================================================
+class DiscoTile(Tile):
+    def __init__(self, alto):
+        super().__init__(80, alto, "Disco C:", "—")
+        self.unidad = "C:\\" if sw.ES_WINDOWS else "/"
+        self._contador = 0
+        self.clic.connect(lambda: abrir(self.unidad))
+
+    def actualizar(self):
+        # El disco cambia lento: lo revisamos cada 30 segundos, no cada segundo
+        if self._contador % 30 == 0:
+            uso = psutil.disk_usage(self.unidad)
+            gb = 1024 ** 3
+            self.poner(valor=f"{uso.percent:.0f}%", progreso=uso.percent, alerta=uso.percent >= 90)
+            self.setToolTip(f"{uso.free / gb:.0f} GB libres de {uso.total / gb:.0f} GB\nClic: abrir el disco")
+        self._contador += 1
+
+
+class AnioTile(Tile):
+    def __init__(self, alto):
+        super().__init__(96, alto, "Año", "—")
+
+    def actualizar(self):
+        ahora = datetime.now()
+        inicio = datetime(ahora.year, 1, 1)
+        fin = datetime(ahora.year + 1, 1, 1)
+        avance = (ahora - inicio) / (fin - inicio) * 100
+        self.poner(titulo=f"Año {ahora.year}", valor=f"{avance:.0f}%", progreso=avance)
+        dia = ahora.timetuple().tm_yday
+        total = (fin - inicio).days
+        self.setToolTip(f"Día {dia} de {total} · faltan {total - dia} días")
+
+
+class EnfoqueTile(Tile):
+    """Temporizador para estudiar (técnica Pomodoro: 25 minutos de concentración)."""
+    MINUTOS = 25
+
+    def __init__(self, alto):
+        super().__init__(92, alto, "Enfoque", f"{self.MINUTOS}:00")
+        self.total = self.MINUTOS * 60
+        self.restante = self.total
+        self.corriendo = False
+        self._fin = 0.0
+        self.setToolTip("Clic: empezar / pausar\nClic derecho: reiniciar")
+        self.clic.connect(self.alternar)
+        self.clic_derecho.connect(lambda _: self.reiniciar())
+
+    def alternar(self):
+        if self.corriendo:
+            self.restante = max(0.0, self._fin - time.monotonic())
+            self.corriendo = False
+        else:
+            if self.restante <= 0:
+                self.restante = self.total
+            self._fin = time.monotonic() + self.restante
+            self.corriendo = True
+        self.actualizar()
+
+    def reiniciar(self):
+        self.corriendo = False
+        self.restante = self.total
+        self.actualizar()
+
+    def actualizar(self):
+        if self.corriendo:
+            self.restante = max(0.0, self._fin - time.monotonic())
+            if self.restante <= 0:
+                self.corriendo = False
+                QApplication.beep()
+                self.poner(titulo="¡Terminaste!", valor="00:00", progreso=100)
+                return
+        minutos, segundos = divmod(int(round(self.restante)), 60)
+        if self.corriendo:
+            titulo = "Enfoque ▶"
+        elif self.restante < self.total:
+            titulo = "En pausa"
+        else:
+            titulo = "Enfoque"
+        avance = 100 * (1 - self.restante / self.total)
+        self.poner(titulo=titulo, valor=f"{minutos:02d}:{segundos:02d}",
+                   progreso=avance if self.restante < self.total else None)
+
+
+# =============================================================================
+# Modo edición: el círculo rojo con "−" para quitar un widget de la barra
+# =============================================================================
+class InsigniaQuitar(QWidget):
+    def __init__(self, padre, al_quitar):
+        super().__init__(padre)
+        self.al_quitar = al_quitar
+        self.setFixedSize(18, 18)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setToolTip("Quitar de la barra")
+        self.move(padre.width() - 19, 1)
+        self.raise_()
+        self.show()
+
+    def mousePressEvent(self, evento):
+        evento.accept()
+
+    def mouseReleaseEvent(self, evento):
+        evento.accept()
+        self.al_quitar()
+
+    def paintEvent(self, evento):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor("#ff3b30"))
+        p.drawEllipse(QRectF(1, 1, 16, 16))
+        p.setBrush(QColor("white"))
+        p.drawRoundedRect(QRectF(5, 8, 8, 2), 1, 1)
+        p.end()

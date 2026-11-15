@@ -44,14 +44,15 @@ def hoja_global():
     acento = ACENTO.name()
     return f"""
     QMenu {{
-        background: rgb(28, 28, 34);
+        background: rgba(38, 38, 44, 248);
         color: #f2f2f5;
-        border: 1px solid rgba(255, 255, 255, 30);
-        border-radius: 10px;
-        padding: 6px;
+        border: 1px solid rgba(255, 255, 255, 34);
+        border-radius: 12px;
+        padding: 5px;
+        font-size: 13px;
     }}
-    QMenu::item {{ padding: 6px 22px 6px 14px; border-radius: 6px; }}
-    QMenu::item:selected {{ background: rgba(255, 255, 255, 30); }}
+    QMenu::item {{ padding: 5px 26px 5px 12px; border-radius: 6px; }}
+    QMenu::item:selected {{ background: {acento}; color: white; }}
     QMenu::item:disabled {{ color: #77778a; }}
     QMenu::separator {{ height: 1px; background: rgba(255, 255, 255, 25); margin: 4px 8px; }}
     QMenu::indicator {{ width: 12px; height: 12px; }}

@@ -1,0 +1,14 @@
+CÓMO ACTUALIZAR mibarra 1.0 -> 1.1
+==================================
+
+Tu config.json NO viene en esta actualización, así que tus apps fijadas,
+widgets y colores se mantienen.
+
+1. Cierra mibarra: clic derecho en un espacio vacío de la barra -> "Cerrar mibarra".
+2. Abre este zip y copia TODOS los archivos de la carpeta "mibarra"
+   dentro de tu carpeta mibarra de siempre (donde está tu config.json).
+3. Cuando Windows pregunte, elige "Reemplazar los archivos en el destino".
+4. Abre mibarra de nuevo con iniciar.bat.
+5. Clic derecho en un espacio vacío de la barra -> "Ajustes de mibarra…".
+
+No hace falta volver a correr instalar.bat: esta versión no usa librerías nuevas.
