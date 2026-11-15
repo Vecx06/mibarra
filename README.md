@@ -30,10 +30,11 @@ Una barra para **Windows 10 y 11** que reemplaza a la barra de tareas: tus apps,
 
 > Las capturas usan apps y datos de ejemplo.
 
-## Instalación
+## Descargar e instalar
 
 1. Instala [Python](https://www.python.org/downloads/). Al instalarlo, **marca "Add Python to PATH"**.
-2. Descarga este repositorio: botón verde **Code → Download ZIP**, y descomprímelo.
+2. Descarga la última versión desde **[Releases](../../releases/latest)** (archivo `mibarra-X.Y.zip`) y descomprímelo.
+   También sirve el botón verde **Code → Download ZIP**.
 3. Haz doble clic en **`instalar.bat`**.
 4. Haz doble clic en **`iniciar.bat`**.
 
@@ -60,3 +61,11 @@ El manual completo está en [LEEME.md](LEEME.md).
 - Funciona solo en el monitor principal.
 - Los íconos de la bandeja (wifi, Discord, Steam…) no aparecen en mibarra; el botón **⌃** muestra la barra de Windows un rato.
 - Las apps de la Microsoft Store aparecen con un ícono de letra.
+
+## Actualizar
+
+Descarga el zip de la nueva versión, cierra mibarra y copia los archivos encima de tu carpeta (elige "Reemplazar"). Tu `config.json` y tus notas no se tocan.
+
+## Licencia
+
+[MIT](LICENSE): puedes usarlo, modificarlo y compartirlo, siempre que mantengas el aviso de autor.
