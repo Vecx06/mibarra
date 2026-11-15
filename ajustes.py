@@ -21,7 +21,7 @@ import urllib.parse
 import urllib.request
 
 from PyQt6.QtCore import QObject, QRectF, Qt, QTimer, QVariantAnimation, pyqtSignal
-from PyQt6.QtGui import QColor, QIcon, QPainter, QPen, QPixmap
+from PyQt6.QtGui import QColor, QFontMetrics, QIcon, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import (QFileDialog, QFrame, QGraphicsDropShadowEffect, QGridLayout,
                              QHBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea, QSlider,
                              QStackedWidget, QVBoxLayout, QWidget, QApplication)
@@ -223,7 +223,9 @@ class Segmentado(QWidget):
         super().__init__()
         self.opciones = opciones        # lista de (valor, texto)
         self.actual = actual
-        self.setFixedSize(96 * len(opciones), 30)
+        medidor = QFontMetrics(estilo.fuente(12, negrita=True))
+        ancho_opcion = max(96, max(medidor.horizontalAdvance(t) for _, t in opciones) + 28)
+        self.setFixedSize(ancho_opcion * len(opciones), 30)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def mouseReleaseEvent(self, evento):
@@ -462,7 +464,7 @@ class Ajustes(QWidget):
             capa_lateral.addWidget(b)
             self.botones_nav[clave] = b
         capa_lateral.addStretch()
-        capa_lateral.addWidget(etiqueta("mibarra 1.2", "suave"))
+        capa_lateral.addWidget(etiqueta("mibarra 1.3", "suave"))
         principal.addWidget(lateral)
 
         # --- Contenido ---
@@ -764,6 +766,12 @@ class Ajustes(QWidget):
         c.addWidget(fila("Posición", "En qué borde de la pantalla va la barra.", posicion))
         c.addWidget(linea())
 
+        forma = Segmentado([("centro", "Centrada"), ("completa", "Ancho completo")],
+                           cfg.get("alineacion", "centro"))
+        forma.cambiado.connect(lambda v: self._poner("alineacion", v, "todo"))
+        c.addWidget(fila("Forma", "Centrada = mide justo lo necesario, como en Windows 11.", forma))
+        c.addWidget(linea())
+
         tema = Segmentado([("oscuro", "Oscuro"), ("claro", "Claro"), ("auto", "Automático")],
                           cfg.get("tema", "oscuro"))
         tema.cambiado.connect(lambda v: self._poner("tema", v, "todo", refrescar=True))
@@ -974,7 +982,7 @@ class Ajustes(QWidget):
     def _pagina_acerca(self, capa):
         t, c = tarjeta()
         c.addWidget(etiqueta("mibarra", "titulo"))
-        c.addWidget(etiqueta("Versión 1.2 · Hecha en Python con PyQt6", "suave"))
+        c.addWidget(etiqueta("Versión 1.3 · Hecha en Python con PyQt6", "suave"))
         c.addWidget(etiqueta("Una barra para Windows con tus apps y widgets en vivo. "
                              "Todo se guarda en config.json, en la carpeta de mibarra."))
         capa.addWidget(t)

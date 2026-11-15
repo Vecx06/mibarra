@@ -1,4 +1,4 @@
-CÓMO ACTUALIZAR mibarra a la 1.2
+CÓMO ACTUALIZAR mibarra a la 1.3
 ================================
 
 Tu config.json NO viene en esta actualización, así que tus apps fijadas,
@@ -8,9 +8,9 @@ widgets y colores se mantienen.
 2. Abre este zip y copia TODOS los archivos de la carpeta "mibarra"
    dentro de tu carpeta mibarra de siempre (donde está tu config.json).
 3. Cuando Windows pregunte, elige "Reemplazar los archivos en el destino".
-4. (Opcional, recomendado) Vuelve a correr instalar.bat: instala lo necesario
+4. (Si vienes de la 1.0 o 1.1) Vuelve a correr instalar.bat: instala lo necesario
    para que los botones de Wi-Fi y Bluetooth enciendan y apaguen las radios.
    Sin eso, esos botones abren los ajustes de Windows.
 5. Abre mibarra con iniciar.bat.
-6. Clic derecho en un espacio vacío de la barra -> "Ajustes de mibarra…" ->
-   Widgets, y agrega los nuevos. El tema claro está en Apariencia.
+6. La barra ahora aparece centrada (como en Windows 11). Para volver a la de
+   ancho completo: Ajustes de mibarra -> Apariencia -> Forma -> Ancho completo.

@@ -12,7 +12,8 @@ import os
 import sys
 from pathlib import Path
 
-from PyQt6.QtCore import QFileInfo, QPoint, QProcess, QRectF, QSize, Qt, QTimer, QVariantAnimation
+from PyQt6.QtCore import (QEasingCurve, QFileInfo, QPoint, QProcess, QPropertyAnimation, QRect,
+                          QRectF, QSize, Qt, QTimer, QVariantAnimation)
 from PyQt6.QtGui import QColor, QIcon, QPainter, QPen
 from PyQt6.QtWidgets import QApplication, QFileIconProvider, QHBoxLayout, QWidget
 
@@ -284,7 +285,10 @@ class Dock(QWidget):
         self.capa_apps.setContentsMargins(0, 0, 0, 0)
         self.capa_apps.setSpacing(4)
         self.capa.addWidget(self.zona_apps)
-        self.capa.addStretch()
+        if self._centrada():
+            self.capa.addWidget(Separador())   # centrada: sin espacio vacío, solo una rayita
+        else:
+            self.capa.addStretch()             # ancho completo: un "resorte" empuja los widgets a la derecha
 
         self.zona_widgets = QWidget()
         self.capa_widgets = QHBoxLayout(self.zona_widgets)
@@ -310,6 +314,7 @@ class Dock(QWidget):
         if self._modo_edicion:
             self._poner_insignias()
         self._actualizar_widgets()
+        QTimer.singleShot(0, self._ajustar_ancho)
 
     # -------------------------------------------------------------------------
     # Aplicar cambios hechos en la ventana de Ajustes (sin reiniciar)
@@ -480,9 +485,47 @@ class Dock(QWidget):
             y = base.y() + base.height() - grosor if self.abajo else base.y()
             zona = (base.x(), y, base.width())
 
-        x, y, ancho = zona
-        self.setGeometry(int(x + self.margen), int(y + self.margen),
-                         int(ancho - 2 * self.margen), self.alto)
+        self._zona = zona
+        self._ajustar_ancho(animar=False)
+
+    def _centrada(self):
+        return self.config.get("alineacion", "centro") == "centro"
+
+    def _ajustar_ancho(self, animar=True):
+        """
+        Centrada: la barra mide JUSTO lo que ocupa su contenido y queda al medio,
+        como en Windows 11. Si abres o cierras apps, crece o se achica con una animación.
+        Ancho completo: ocupa todo el borde de la pantalla.
+        """
+        if not hasattr(self, "_zona"):
+            return
+        x, y, ancho = self._zona
+        disponible = ancho - 2 * self.margen
+        if self._centrada():
+            self.capa.activate()                       # que la capa recalcule cuánto mide
+            medida = min(self.capa.sizeHint().width(), disponible)
+            izquierda = x + self.margen + (disponible - medida) / 2
+        else:
+            medida, izquierda = disponible, x + self.margen
+        destino = QRect(int(izquierda), int(y + self.margen), int(medida), self.alto)
+
+        animacion = getattr(self, "_animacion", None)
+        if animacion is not None and animacion.state() == QPropertyAnimation.State.Running:
+            if animacion.endValue() == destino:
+                return
+            animacion.stop()
+        elif destino == self.geometry():
+            return
+
+        if animar and self.isVisible():
+            self._animacion = QPropertyAnimation(self, b"geometry", self)
+            self._animacion.setDuration(180)
+            self._animacion.setEasingCurve(QEasingCurve.Type.OutCubic)
+            self._animacion.setStartValue(self.geometry())
+            self._animacion.setEndValue(destino)
+            self._animacion.start()
+        else:
+            self.setGeometry(destino)
 
     # -------------------------------------------------------------------------
     # Dibujo del fondo
@@ -507,6 +550,7 @@ class Dock(QWidget):
     def _actualizar_widgets(self):
         for w in self.widgets:
             w.actualizar()
+        self._ajustar_ancho()   # por si un widget apareció o desapareció (ej. batería)
 
     def _vigilar(self):
         self.barra_windows.vigilar()
@@ -573,6 +617,7 @@ class Dock(QWidget):
             self.capa_apps.addWidget(Separador())
         for clave, g in abiertas:
             self._agregar_boton(clave, g)
+        QTimer.singleShot(0, self._ajustar_ancho)
 
     def _agregar_boton(self, clave, g):
         b = BotonApp(self, clave, g["nombre"], g["ruta"], g["emoji"], g["fijada"])

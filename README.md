@@ -9,6 +9,7 @@ Una barra para **Windows 10 y 11** que reemplaza a la barra de tareas: tus apps,
 
 - **Apps fijadas y abiertas**, agrupadas por programa. Un punto indica que la app está abierta y una rayita de color, que es la ventana activa.
 - **21 widgets en vivo:** comando (abre programas, páginas, busca o calcula), notas, Wi-Fi/Bluetooth/modo avión, claro/oscuro de Windows, capturas de pantalla, anillos de batería y CPU, conversor de moneda, almacenamiento, música, clima, velocidad de internet, CPU, RAM, disco, batería, volumen, reloj con calendario, progreso del año y un temporizador de estudio (Enfoque).
+- **Centrada como en Windows 11**: mide justo lo que ocupa y crece o se achica con una animación al abrir y cerrar apps (o ancho completo, si prefieres).
 - **Tema claro, oscuro o automático** (sigue a Windows).
 - **Ajustes estilo Apple:** galería de widgets con buscador, apps fijadas, apariencia, comportamiento y clima. Los cambios se aplican al tiro.
 - **Modo edición:** mientras los Ajustes están abiertos, cada widget muestra un círculo rojo **−** para quitarlo.

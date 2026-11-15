@@ -37,6 +37,7 @@ def _apps_por_defecto():
 
 POR_DEFECTO = {
     "posicion": "abajo",            # "abajo" o "arriba"
+    "alineacion": "centro",         # "centro" (flotante, justo del tamaño necesario) o "completa"
     "alto": 56,                     # alto de la barra en píxeles
     "margen": 8,                    # separación con el borde de la pantalla
     "estilo": "vidrio",             # "vidrio" (fondo borroso) o "solido"

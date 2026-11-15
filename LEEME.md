@@ -1,4 +1,8 @@
-# mibarra 1.2
+# mibarra 1.3
+
+## Novedades de la 1.3
+- **Barra centrada, como en Windows 11:** flota al medio y mide justo lo que ocupa su contenido, sin espacios vacíos. Si abres o cierras apps, crece o se achica con una animación.
+- Si prefieres la de antes: Ajustes › Apariencia › Forma › **Ancho completo**.
 
 ## Novedades de la 1.2
 - **Tema claro** para la barra (y modo **Automático**, que sigue a Windows): Ajustes › Apariencia › Tema de la barra.
@@ -60,6 +64,7 @@ Para usuarios avanzados, los mismos ajustes están en `config.json`:
 | Opción | Qué hace | Valores |
 |---|---|---|
 | `posicion` | Dónde va la barra | `"abajo"` o `"arriba"` |
+| `alineacion` | Forma de la barra | `"centro"` (justo del tamaño necesario) o `"completa"` |
 | `alto` | Alto en píxeles | ej. `56` |
 | `margen` | Separación con el borde | ej. `8` |
 | `estilo` | Fondo | `"vidrio"` (borroso) o `"solido"` |
