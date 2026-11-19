@@ -15,7 +15,7 @@ from pathlib import Path
 from PyQt6.QtCore import (QEasingCurve, QFileInfo, QPoint, QProcess, QPropertyAnimation, QRect,
                           QRectF, QSize, Qt, QTimer, QVariantAnimation)
 from PyQt6.QtGui import QColor, QCursor, QIcon, QPainter, QPen
-from PyQt6.QtWidgets import QApplication, QFileIconProvider, QHBoxLayout, QWidget
+from PyQt6.QtWidgets import QApplication, QFileIconProvider, QHBoxLayout, QLayout, QWidget
 
 import config as configuracion
 import mas_widgets
@@ -271,6 +271,11 @@ class Dock(QWidget):
         self.capa = QHBoxLayout(self)
         self.capa.setContentsMargins(10, 8, 6, 8)
         self.capa.setSpacing(6)
+        # Importante: que la capa NO agrande la ventana sola. El tamaño lo decidimos nosotros
+        # en _ajustar_ancho (si no, al medir, la ventana "salta" y se ve un parpadeo).
+        self.capa.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
+        self._firma_medida = None
+        self._medida = 0
         self._armar_todo()
 
         # --- Relojes internos (timers) ---
@@ -327,6 +332,7 @@ class Dock(QWidget):
 
         self.botones = {}
         self._firma = None
+        self._firma_medida = None
         self._armar_widgets()
 
     def _armar_widgets(self):
@@ -340,6 +346,7 @@ class Dock(QWidget):
                 self.widgets.append(w)
         if self._modo_edicion:
             self._poner_insignias()
+        self._firma_medida = None
         self._actualizar_widgets()
         QTimer.singleShot(0, self._ajustar_ancho)
 
@@ -685,9 +692,15 @@ class Dock(QWidget):
             return
         x, y, ancho = self._zona
         disponible = ancho - 2 * self.margen
-        self._acomodar_desborde(disponible)
+        # Solo volvemos a medir si cambió algo que afecte el ancho (apps, widgets, pantalla, tamaño)
+        firma = (disponible, self.alto, tuple(self.botones),
+                 tuple((w.id_widget, bool(getattr(w, "oculto_propio", False))) for w in self.widgets))
+        if firma != self._firma_medida:
+            self._acomodar_desborde(disponible)
+            self._medida = self._medir()
+            self._firma_medida = firma
         if self._centrada():
-            medida = min(self._medir(), disponible)
+            medida = min(self._medida, disponible)
             izquierda = x + self.margen + (disponible - medida) / 2
         else:
             medida, izquierda = disponible, x + self.margen
@@ -807,6 +820,7 @@ class Dock(QWidget):
             self.capa_apps.addWidget(Separador())
         for clave, g in abiertas:
             self._agregar_boton(clave, g)
+        self._firma_medida = None
         QTimer.singleShot(0, self._ajustar_ancho)
 
     def _agregar_boton(self, clave, g):

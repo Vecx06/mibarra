@@ -147,6 +147,10 @@ def test_barra_real_en_windows(tmp_path):
     resultado = json.loads(linea[0].split("=", 1)[1])
     assert resultado["oscuro"]["barra_windows_visible"] is False
     assert resultado["oscuro"]["espacio_reservado"] is True
+    for tema in ("oscuro", "claro"):
+        # La barra cabe en la pantalla y no está "respirando" (cambiando de tamaño) sola
+        assert resultado[tema]["geometria"][2] <= resultado[tema]["pantalla"][0]
+        assert resultado[tema]["animando"] is False
     # Al cerrar: la barra de Windows vuelve y queda igual que antes
     barra = sw.BarraWindows._ventanas()[0]
     assert sw.user32.IsWindowVisible(barra)

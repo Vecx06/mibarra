@@ -143,3 +143,16 @@ def test_aviso_de_limite_alto(dock, app):
     w._mostrar(datos)                  # el mismo aviso no se repite
     widgets.avisar = anterior
     assert recibidos == [("Te queda poco de Claude", "ia")]
+
+
+def test_la_barra_no_parpadea_cada_segundo(dock, app):
+    """Regresión: al actualizar los widgets cada segundo, la barra no debe cambiar de tamaño ni animarse."""
+    dock._ajustar_ancho(animar=False)
+    app.processEvents()
+    antes = dock.geometry()
+    for _ in range(3):
+        dock._actualizar_widgets()
+        app.processEvents()
+        assert dock.geometry() == antes
+    animacion = getattr(dock, "_animacion", None)
+    assert animacion is None or animacion.state() != animacion.State.Running
