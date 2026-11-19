@@ -117,3 +117,69 @@ def test_codex_ventana_vencida_es_cero():
     pasado = int(datetime.now(timezone.utc).timestamp()) - 60
     r = ia.interpretar_linea_codex(_evento_codex(80, 40, pasado))
     assert r["sesion"]["porcentaje"] == 0.0
+
+
+def _credenciales(carpeta, vence_en_segundos, token="nuevo"):
+    vence = (datetime.now().timestamp() + vence_en_segundos) * 1000
+    (carpeta / ".credentials.json").write_text(json.dumps(
+        {"claudeAiOauth": {"accessToken": token, "expiresAt": vence}}))
+
+
+def test_renovar_sesion_claude(tmp_path, monkeypatch):
+    """Si la sesión venció, mibarra le pide a Claude Code (sin ventana) que la renueve."""
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+    _credenciales(tmp_path, -60, "viejo")
+    llamadas = []
+
+    def claude_falso(orden, **kw):
+        llamadas.append(orden)
+        _credenciales(tmp_path, 8 * 3600)          # lo que hace Claude Code al renovar
+
+    monkeypatch.setattr(ia, "ruta_claude_code", lambda: "claude.exe")
+    monkeypatch.setattr(ia.subprocess, "run", claude_falso)
+    monkeypatch.setattr(ia, "_ultimo_intento", 0.0)
+    assert ia.renovar_sesion_claude() is True
+    assert llamadas[0][:3] == ["claude.exe", "-p", "ok"]
+    assert ia.token_claude() == "nuevo"
+    # No lo intenta de nuevo enseguida (máximo una vez cada 20 min)
+    _credenciales(tmp_path, -60, "viejo")
+    assert ia.renovar_sesion_claude() is False
+    assert len(llamadas) == 1
+
+
+def test_renovar_sin_claude_code(monkeypatch):
+    monkeypatch.setattr(ia, "ruta_claude_code", lambda: None)
+    assert ia.renovar_sesion_claude(forzar=True) is False
+
+
+def test_limites_claude_renueva_y_reintenta(tmp_path, monkeypatch):
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+    _credenciales(tmp_path, -60, "viejo")
+    monkeypatch.setattr(ia, "renovar_sesion_claude", lambda: _credenciales(tmp_path, 3600) or True)
+    usados = []
+
+    class Respuesta:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self, *a): return json.dumps({"five_hour": {"utilization": 30, "resets_at": None},
+                                               "seven_day": {"utilization": 10, "resets_at": None}}).encode()
+
+    def abrir_url(pedido, timeout):
+        usados.append(pedido.get_header("Authorization"))
+        return Respuesta()
+
+    monkeypatch.setattr(ia.urllib.request, "urlopen", abrir_url)
+    datos = ia.limites_claude()
+    assert usados == ["Bearer nuevo"]
+    assert datos["sesion"]["porcentaje"] == 30
+
+
+def test_limites_claude_vencida_sin_poder_renovar(tmp_path, monkeypatch):
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path))
+    _credenciales(tmp_path, -60, "viejo")
+    monkeypatch.setattr(ia, "renovar_sesion_claude", lambda: False)
+    with pytest.raises(ia.SinDatos, match="clic para renovar"):
+        ia.limites_claude()

@@ -13,6 +13,8 @@ para no congelar la barra mientras esperan.
 import asyncio
 import json
 import os
+import re
+import subprocess
 import threading
 import time
 import urllib.parse
@@ -83,12 +85,62 @@ def aplicar_visibilidad(widget):
     widget.setVisible(not getattr(widget, "oculto_propio", False) and not getattr(widget, "sin_espacio", False))
 
 
+_APPS_TIENDA = re.compile(r"\\WindowsApps\\([^\\_]+)_[^\\]*__([A-Za-z0-9]+)(\\|$)", re.IGNORECASE)
+_ids_tienda = {}
+
+
+def id_app_tienda(ruta, listar=None):
+    """
+    Las apps de la Microsoft Store (como Claude) viven en una carpeta con la VERSIÓN en el nombre:
+      C:\\Program Files\\WindowsApps\\Claude_5.11492.5.0_x64__pzs8sxrjxfjjc\\app\\claude.exe
+    Cuando la app se actualiza, esa carpeta cambia y la ruta guardada deja de existir.
+    La forma correcta de abrirlas es por su "AppID" (ej. Claude_pzs8sxrjxfjjc!Claude), que no cambia.
+    Devuelve ese AppID o None.
+    """
+    m = _APPS_TIENDA.search(ruta)
+    if not m:
+        return None
+    familia = f"{m.group(1)}_{m.group(2)}".lower()
+    if familia in _ids_tienda:
+        return _ids_tienda[familia]
+    ids = (listar or _listar_ids_inicio)()
+    encontrado = next((i for i in ids if i.lower().startswith(familia + "!")), None)
+    _ids_tienda[familia] = encontrado
+    return encontrado
+
+
+def _listar_ids_inicio():
+    """Los AppID de todas las apps del menú Inicio (pregunta a PowerShell, sin ventana)."""
+    try:
+        salida = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", "Get-StartApps | ForEach-Object { $_.AppID }"],
+            capture_output=True, text=True, timeout=20, creationflags=0x08000000).stdout
+    except (OSError, subprocess.SubprocessError):
+        return []
+    return [linea.strip() for linea in salida.splitlines() if linea.strip()]
+
+
 def abrir(ruta):
     """Abre un programa, archivo o enlace como si le hicieras doble clic."""
     try:
         os.startfile(ruta)   # solo existe en Windows
+        return
     except Exception as error:
-        log.warning("No pude abrir %s: %s", ruta, error)
+        problema = error
+    # ¿Es una app de la Microsoft Store que se actualizó? Se abre por su AppID (en otro hilo,
+    # porque preguntarle a Windows toma un segundo y la barra no debe congelarse).
+    if _APPS_TIENDA.search(str(ruta)):
+        def por_tienda():
+            app = id_app_tienda(str(ruta))
+            try:
+                if not app:
+                    raise FileNotFoundError("no encontré la app en el menú Inicio")
+                os.startfile("shell:AppsFolder\\" + app)
+            except Exception as error:
+                log.warning("No pude abrir %s: %s", ruta, error)
+        threading.Thread(target=por_tienda, daemon=True).start()
+        return
+    log.warning("No pude abrir %s: %s", ruta, problema)
 
 
 class TrabajoRepetido(QObject):
@@ -104,9 +156,14 @@ class TrabajoRepetido(QObject):
         self.cada = cada
         self.cada_si_falla = cada_si_falla or cada
         self.activo = True
+        self._despertar = False
 
     def detener(self):
         self.activo = False
+
+    def despertar(self):
+        """Que vuelva a consultar YA, sin esperar su turno."""
+        self._despertar = True
 
     def empezar(self):
         threading.Thread(target=self._bucle, daemon=True).start()
@@ -125,8 +182,9 @@ class TrabajoRepetido(QObject):
                 return
             # Dormir de a poquito, para poder detenernos rápido si nos lo piden
             fin = time.monotonic() + espera
-            while self.activo and time.monotonic() < fin:
+            while self.activo and not self._despertar and time.monotonic() < fin:
                 time.sleep(0.25)
+            self._despertar = False
 
 
 class TrabajoUnaVez(QObject):

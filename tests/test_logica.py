@@ -84,3 +84,13 @@ def test_config_nueva_muestra_bienvenida():
     c = config.cargar()
     assert c["bienvenida_vista"] is False
     assert rutas.ARCHIVO_CONFIG.exists()
+
+
+def test_id_app_tienda():
+    """Las apps de la Microsoft Store cambian de carpeta al actualizarse: se abren por su AppID."""
+    import widgets
+    widgets._ids_tienda.clear()
+    ruta = r"C:\Program Files\WindowsApps\Claude_5.11492.5.0_x64__pzs8sxrjxfjjc\app\claude.exe"
+    ids = ["Microsoft.WindowsCalculator_8wekyb3d8bbwe!App", "Claude_pzs8sxrjxfjjc!Claude"]
+    assert widgets.id_app_tienda(ruta, listar=lambda: ids) == "Claude_pzs8sxrjxfjjc!Claude"
+    assert widgets.id_app_tienda(r"C:\Windows\notepad.exe", listar=lambda: ids) is None

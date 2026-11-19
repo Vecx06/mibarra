@@ -9,6 +9,10 @@ Todo lo de aquí es "lógica pura" (sin ventanas), así se puede probar fácil.
    claude.ai › Ajustes › Uso. El permiso NUNCA se guarda ni se anota en ningún lado: solo se usa
    para esa consulta, y solo se envía a Anthropic.
 
+   Ese permiso dura unas 8 horas y SOLO Claude Code lo renueva (cuando lo usas). Si vence,
+   mibarra abre Claude Code a escondidas con una pregunta mínima ("ok", con el modelo más
+   barato) para que renueve la sesión solo. Como máximo una vez cada 20 minutos.
+
 2) Tokens de Claude Code hoy:
    Claude Code anota cada respuesta en ~/.claude/projects/**/*.jsonl, con los tokens usados.
    Los sumamos sin conectarnos a nada.
@@ -20,6 +24,8 @@ Todo lo de aquí es "lógica pura" (sin ventanas), así se puede probar fácil.
 
 import json
 import os
+import shutil
+import subprocess
 import time
 import urllib.error
 import urllib.request
@@ -27,6 +33,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from version import VERSION
+
+
+VENCIDA = "Sesión vencida · clic para renovar"
 
 
 class SinDatos(Exception):
@@ -101,8 +110,67 @@ def token_claude():
         raise SinDatos("Inicia sesión en Claude Code")
     vence = oauth.get("expiresAt")
     if isinstance(vence, (int, float)) and vence / 1000 < time.time():
-        raise SinDatos("Abre Claude Code para renovar la sesión")
+        raise SinDatos(VENCIDA)
     return token
+
+
+def ruta_claude_code():
+    """Dónde está el programa claude (Claude Code). None si no está instalado."""
+    encontrado = shutil.which("claude")
+    if encontrado:
+        return encontrado
+    casa = Path.home()
+    candidatos = [casa / ".local" / "bin" / "claude.exe", casa / ".local" / "bin" / "claude"]
+    if os.environ.get("APPDATA"):
+        candidatos.append(Path(os.environ["APPDATA"]) / "npm" / "claude.cmd")
+    for candidato in candidatos:
+        if candidato.exists():
+            return str(candidato)
+    return None
+
+
+_SIN_VENTANA = 0x08000000      # CREATE_NO_WINDOW: que no aparezca una consola negra
+_NUEVA_CONSOLA = 0x00000010    # CREATE_NEW_CONSOLE
+_ultimo_intento = 0.0
+ESPERA_ENTRE_INTENTOS = 20 * 60
+
+
+def renovar_sesion_claude(forzar=False):
+    """
+    Pide a Claude Code (sin ventana) que renueve la sesión. Devuelve True si quedó renovada.
+    Usa una pregunta mínima con el modelo más barato: gasta casi nada de tu plan.
+    """
+    global _ultimo_intento
+    programa = ruta_claude_code()
+    if not programa:
+        return False
+    if not forzar and time.monotonic() - _ultimo_intento < ESPERA_ENTRE_INTENTOS and _ultimo_intento:
+        return False
+    _ultimo_intento = time.monotonic()
+    try:
+        subprocess.run([programa, "-p", "ok", "--model", "haiku"], cwd=str(Path.home()),
+                       stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                       timeout=120, creationflags=_SIN_VENTANA if os.name == "nt" else 0)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    try:
+        token_claude()
+        return True
+    except SinDatos:
+        return False
+
+
+def abrir_claude_code():
+    """Plan B: abre Claude Code en una ventana para que el usuario inicie sesión o la renueve."""
+    programa = ruta_claude_code()
+    if not programa:
+        return False
+    try:
+        subprocess.Popen([programa], cwd=str(Path.home()),
+                         creationflags=_NUEVA_CONSOLA if os.name == "nt" else 0)
+        return True
+    except OSError:
+        return False
 
 
 def interpretar_limites_claude(datos):
@@ -120,8 +188,13 @@ def interpretar_limites_claude(datos):
     return resultado
 
 
-def limites_claude():
-    token = token_claude()
+def limites_claude(_reintento=True):
+    try:
+        token = token_claude()
+    except SinDatos as aviso:
+        if str(aviso) == VENCIDA and _reintento and renovar_sesion_claude():
+            return limites_claude(_reintento=False)
+        raise
     pedido = urllib.request.Request("https://api.anthropic.com/api/oauth/usage", headers={
         "Authorization": f"Bearer {token}",
         "anthropic-beta": "oauth-2025-04-20",
@@ -132,7 +205,9 @@ def limites_claude():
             datos = json.load(respuesta)
     except urllib.error.HTTPError as error:
         if error.code in (401, 403):
-            raise SinDatos("Abre Claude Code para renovar la sesión") from None
+            if _reintento and renovar_sesion_claude():
+                return limites_claude(_reintento=False)
+            raise SinDatos(VENCIDA) from None
         if error.code == 429:
             raise SinDatos("Anthropic pidió esperar un poco") from None
         raise

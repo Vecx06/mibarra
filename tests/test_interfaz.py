@@ -130,6 +130,22 @@ def test_widgets_ia_en_demo_y_sin_datos(app):
     w.grab()
 
 
+def test_clic_con_sesion_vencida_abre_claude_code(app, monkeypatch):
+    import ia
+    import widgets_ia
+    abiertos, web = [], []
+    monkeypatch.setattr(ia, "abrir_claude_code", lambda: abiertos.append(1) or True)
+    monkeypatch.setattr(widgets_ia.webbrowser, "open", lambda url: web.append(url))
+    w = widgets_ia.CREADORES_IA["claude_limites"](40, {}, demo=True)
+    w._mostrar(ia.VENCIDA)
+    assert "abrir Claude Code" in w.toolTip()
+    w.clic.emit()
+    assert abiertos == [1] and web == [] and w.mensaje == "Renovando…"
+    w._mostrar("Anthropic pidió esperar un poco")
+    w.clic.emit()                       # otro problema: abre la web como siempre
+    assert len(web) == 1
+
+
 def test_aviso_de_limite_alto(dock, app):
     import widgets
     from widgets_ia import CREADORES_IA

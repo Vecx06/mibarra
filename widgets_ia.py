@@ -9,7 +9,7 @@ widgets_ia.py — widgets para ver cuánto llevas usado de Claude y de ChatGPT (
 import webbrowser
 from datetime import datetime, timedelta, timezone
 
-from PyQt6.QtCore import QRectF, Qt
+from PyQt6.QtCore import QRectF, Qt, QTimer
 from PyQt6.QtGui import QColor
 
 import estilo
@@ -34,20 +34,35 @@ class LimitesWidget(Caja):
                  7 d  ▬▬▭▭▭▭  18%
     """
 
-    def __init__(self, alto, nombre, color, funcion, cada, url, demo=False, datos_demo=None):
+    def __init__(self, alto, nombre, color, funcion, cada, url, demo=False, datos_demo=None,
+                 arreglar=None):
         super().__init__(radio=12)
         self.setFixedSize(206, alto)
         self.nombre, self.color, self.url = nombre, color, url
+        self.arreglar = arreglar      # qué hacer al hacer clic cuando hay un problema de sesión
+        self.trabajo = None
         self.datos = None
         self.mensaje = "Cargando…"
         self._avisado = set()
-        self.clic.connect(lambda: webbrowser.open(self.url))
+        self.clic.connect(self._al_clic)
         if demo:
             self._mostrar(datos_demo)
         else:
             self.trabajo = TrabajoRepetido(funcion, cada=cada, cada_si_falla=max(60, cada // 2))
             self.trabajo.resultado.connect(self._mostrar)
             self.trabajo.empezar()
+
+    def _al_clic(self):
+        if self.datos is None and self.arreglar and self.arreglar(self.mensaje):
+            self.mensaje = "Renovando…"
+            self._armar_ayuda()
+            self.update()
+            if self.trabajo:
+                # Volver a mirar al rato (lo que tarde en abrir Claude Code y renovar)
+                for segundos in (15, 40, 90, 180):
+                    QTimer.singleShot(segundos * 1000, self.trabajo.despertar)
+            return
+        webbrowser.open(self.url)
 
     def _mostrar(self, datos):
         # TrabajoRepetido entrega None si hubo error; los SinDatos llegan como texto (ver _envolver)
@@ -77,7 +92,9 @@ class LimitesWidget(Caja):
 
     def _armar_ayuda(self):
         if not self.datos:
-            self.setToolTip(f"{self.nombre}: {self.mensaje}\nClic: ver tu uso en la web")
+            accion = ("abrir Claude Code para renovar" if self.arreglar and self.mensaje in
+                      (ia.VENCIDA, "Inicia sesión en Claude Code") else "ver tu uso en la web")
+            self.setToolTip(f"{self.nombre}: {self.mensaje}\nClic: {accion}")
             return
         lineas = [self.nombre]
         nombres = {"sesion": "Sesión de 5 horas", "semana": "Semana", "semana_opus": "Semana (Opus)",
@@ -140,6 +157,13 @@ class LimitesWidget(Caja):
         pass
 
 
+def _arreglar_claude(mensaje):
+    """Clic en el widget de Claude con la sesión vencida o sin iniciar: abre Claude Code."""
+    if mensaje in (ia.VENCIDA, "Inicia sesión en Claude Code"):
+        return ia.abrir_claude_code()
+    return False
+
+
 def _envolver(funcion):
     """Si la función dice SinDatos, entregamos su mensaje (texto) en vez de un error."""
     def envuelta():
@@ -193,7 +217,7 @@ def _demo(sesion, semana):
 CREADORES_IA = {
     "claude_limites": lambda alto, cfg, demo=False, arriba=True: LimitesWidget(
         alto, "Claude", "#d97757", _envolver(ia.limites_claude), 300, "https://claude.ai/settings/usage",
-        demo, _demo(42, 18)),
+        demo, _demo(42, 18), arreglar=_arreglar_claude),
     "claude_tokens": lambda alto, cfg, demo=False, arriba=True: TokensClaudeTile(alto, demo),
     "codex_limites": lambda alto, cfg, demo=False, arriba=True: LimitesWidget(
         alto, "Codex", "#10a37f", _envolver(ia.limites_codex), 60, "https://chatgpt.com/codex",

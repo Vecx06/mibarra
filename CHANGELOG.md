@@ -3,6 +3,18 @@
 Todas las versiones de mibarra. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y los números siguen [versionado semántico](https://semver.org/lang/es/).
 
+## [2.1.1] — 2026-11-19
+
+### Arreglado
+- **El widget de Claude ya no se queda en "Abre Claude Code para renovar la sesión".** La sesión de
+  Claude Code dura unas 8 horas y solo Claude Code la renueva. Ahora, cuando vence, mibarra le pide a
+  Claude Code (sin abrir ninguna ventana) que la renueve solo, con una pregunta mínima al modelo más
+  barato. Como máximo una vez cada 20 minutos.
+- Si aun así no se puede, el widget dice **"Sesión vencida · clic para renovar"**: un clic abre Claude Code
+  y la barra vuelve a mirar sola a los pocos segundos.
+- **Las apps de la Microsoft Store fijadas en la barra (como la app de Claude) vuelven a abrir después de
+  actualizarse.** Esas apps cambian de carpeta en cada versión; ahora se abren por su identificador fijo.
+
 ## [2.1.0] — 2026-11-18
 
 ### Agregado
