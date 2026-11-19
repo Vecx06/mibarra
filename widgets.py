@@ -66,6 +66,15 @@ def recortar(texto, fuente, ancho):
     return QFontMetrics(fuente).elidedText(texto, Qt.TextElideMode.ElideRight, max(0, int(ancho)))
 
 
+# La barra pone aquí una función para mostrar avisos flotantes: avisar(titulo, texto, tipo)
+avisar = None
+
+
+def mostrar_aviso(titulo, texto, tipo="general"):
+    if avisar is not None:
+        avisar(titulo, texto, tipo)
+
+
 def aplicar_visibilidad(widget):
     """
     Un widget se ve si: él mismo no pidió esconderse (ej. batería en un PC sin batería)
@@ -672,18 +681,40 @@ class AnioTile(Tile):
 
 
 class EnfoqueTile(Tile):
-    """Temporizador para estudiar (técnica Pomodoro: 25 minutos de concentración)."""
-    MINUTOS = 25
+    """Temporizador para estudiar (técnica Pomodoro). Clic derecho: elegir minutos."""
+    OPCIONES = (15, 25, 45, 60, 90)
 
-    def __init__(self, alto):
-        super().__init__(92, alto, "Enfoque", f"{self.MINUTOS}:00")
-        self.total = self.MINUTOS * 60
+    def __init__(self, alto, config=None):
+        self.config = config if config is not None else {}
+        minutos = int(self.config.get("enfoque_minutos", 25))
+        super().__init__(92, alto, "Enfoque", f"{minutos}:00")
+        self.total = minutos * 60
         self.restante = self.total
         self.corriendo = False
         self._fin = 0.0
-        self.setToolTip("Clic: empezar / pausar\nClic derecho: reiniciar")
+        self.setToolTip("Clic: empezar / pausar\nClic derecho: elegir minutos o reiniciar")
         self.clic.connect(self.alternar)
-        self.clic_derecho.connect(lambda _: self.reiniciar())
+        self.clic_derecho.connect(self._menu)
+
+    def _menu(self, posicion):
+        menu = crear_menu(self)
+        reiniciar = menu.addAction("Reiniciar")
+        menu.addSeparator()
+        opciones = {}
+        for minutos in self.OPCIONES:
+            accion = menu.addAction(f"{minutos} minutos")
+            accion.setCheckable(True)
+            accion.setChecked(minutos * 60 == self.total)
+            opciones[accion] = minutos
+        elegida = menu.exec(posicion)
+        if elegida is reiniciar:
+            self.reiniciar()
+        elif elegida in opciones:
+            self.total = opciones[elegida] * 60
+            self.config["enfoque_minutos"] = opciones[elegida]
+            import config as configuracion
+            configuracion.guardar(self.config)
+            self.reiniciar()
 
     def alternar(self):
         if self.corriendo:
@@ -708,6 +739,8 @@ class EnfoqueTile(Tile):
                 self.corriendo = False
                 QApplication.beep()
                 self.poner(titulo="¡Terminaste!", valor="00:00", progreso=100)
+                mostrar_aviso("¡Terminaste tu bloque de enfoque!",
+                              f"Llevas {self.total // 60} minutos concentrado. Toma un descanso de 5 minutos.")
                 return
         minutos, segundos = divmod(int(round(self.restante)), 60)
         if self.corriendo:

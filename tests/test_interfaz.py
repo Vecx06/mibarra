@@ -92,3 +92,54 @@ def test_bienvenida_y_aviso(dock):
 def test_logo(app):
     from logo import dibujar_logo
     assert not dibujar_logo(64).isNull()
+
+
+def test_ocultar_automaticamente(dock, app):
+    dock.config["auto_ocultar"] = True
+    dock.aplicar_config("todo")
+    pantalla = dock.screen().geometry()
+    dock._oculta_auto = True
+    dock._ajustar_ancho(animar=False)
+    assert dock.geometry().top() > pantalla.bottom()      # fuera de la pantalla
+    dock.alternar_barra()                                  # el atajo la vuelve a mostrar
+    dock._ajustar_ancho(animar=False)
+    assert dock.geometry().bottom() <= pantalla.bottom()
+    dock.config["auto_ocultar"] = False
+    dock.aplicar_config("todo")
+
+
+def test_buscador_se_abre_y_busca(dock, app):
+    dock.abrir_buscador()
+    b = dock.buscador
+    b.programas = [{"nombre": "Discord", "detalle": "Programa", "ruta": "x.lnk"}]
+    b.campo.setText("disc")
+    assert b.lista.count() >= 2
+    assert b.resultados[0]["nombre"] == "Discord"
+    b.hide()
+
+
+def test_widgets_ia_en_demo_y_sin_datos(app):
+    from widgets_ia import CREADORES_IA
+    for crear in CREADORES_IA.values():
+        w = crear(40, {}, demo=True)
+        w.grab()
+    from widgets_ia import LimitesWidget
+    w = LimitesWidget(40, "Claude", "#d97757", lambda: "Instala Claude Code", 300, "https://x", demo=True,
+                      datos_demo="Instala Claude Code e inicia sesión")
+    assert w.datos is None and "Instala" in w.mensaje
+    w.grab()
+
+
+def test_aviso_de_limite_alto(dock, app):
+    import widgets
+    from widgets_ia import CREADORES_IA
+    recibidos = []
+    anterior = widgets.avisar
+    widgets.avisar = lambda titulo, texto, tipo="general": recibidos.append((titulo, tipo))
+    w = CREADORES_IA["claude_limites"](40, {}, demo=True)
+    datos = dict(w.datos)
+    datos["sesion"] = dict(datos["sesion"], porcentaje=95)
+    w._mostrar(datos)
+    w._mostrar(datos)                  # el mismo aviso no se repite
+    widgets.avisar = anterior
+    assert recibidos == [("Te queda poco de Claude", "ia")]

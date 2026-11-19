@@ -705,3 +705,8 @@ CREADORES = {
     "moneda": lambda alto, cfg, demo=False, arriba=True: MonedaTile(alto, cfg, demo),
     "almacenamiento": lambda alto, cfg, demo=False, arriba=True: AlmacenamientoTile(alto, demo),
 }
+
+# Los widgets de IA viven en su propio archivo
+from widgets_ia import CREADORES_IA  # noqa: E402
+
+CREADORES.update(CREADORES_IA)

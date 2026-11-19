@@ -137,6 +137,12 @@ if ES_WINDOWS:
     _firmar(kernel32.QueryFullProcessImageNameW,
             [wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR, ctypes.POINTER(wintypes.DWORD)])
     _firmar(kernel32.CloseHandle, [wintypes.HANDLE])
+    _firmar(user32.RegisterHotKey, [H, ctypes.c_int, wintypes.UINT, wintypes.UINT])
+    _firmar(user32.UnregisterHotKey, [H, ctypes.c_int])
+    _firmar(user32.GetMessageW, [ctypes.POINTER(wintypes.MSG), H, wintypes.UINT, wintypes.UINT])
+    _firmar(user32.PostThreadMessageW, [wintypes.DWORD, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM])
+    _firmar(kernel32.GetCurrentThreadId, [], wintypes.DWORD)
+    _firmar(user32.LockWorkStation, [])
     _firmar(kernel32.WaitForSingleObject, [wintypes.HANDLE, wintypes.DWORD], wintypes.DWORD)
     _firmar(kernel32.CreateMutexW, [ctypes.c_void_p, wintypes.BOOL, wintypes.LPCWSTR], wintypes.HANDLE)
     _firmar(shell32.SHAppBarMessage, [wintypes.DWORD, ctypes.POINTER(APPBARDATA)], ctypes.c_size_t)

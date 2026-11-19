@@ -9,15 +9,18 @@ Cada 1 s actualiza los widgets (hora, CPU, RAM...).
 """
 
 import os
+import time
 from pathlib import Path
 
 from PyQt6.QtCore import (QEasingCurve, QFileInfo, QPoint, QProcess, QPropertyAnimation, QRect,
                           QRectF, QSize, Qt, QTimer, QVariantAnimation)
-from PyQt6.QtGui import QColor, QIcon, QPainter, QPen
+from PyQt6.QtGui import QColor, QCursor, QIcon, QPainter, QPen
 from PyQt6.QtWidgets import QApplication, QFileIconProvider, QHBoxLayout, QWidget
 
 import config as configuracion
 import mas_widgets
+import widgets as modulo_widgets
+from atajos import Atajos
 import rutas
 from registro import log
 import estilo
@@ -73,11 +76,15 @@ class Separador(QWidget):
 
 
 class BotonInicio(Caja):
-    def __init__(self, lado):
+    def __init__(self, lado, dock):
         super().__init__()
         self.setFixedSize(lado, lado)
-        self.setToolTip("Inicio\nClic derecho: menú rápido (apagar, ajustes...)")
-        self.clic.connect(lambda: sw.presionar_teclas(sw.VK_LWIN))
+        if dock.config.get("boton_inicio") == "buscador":
+            self.setToolTip("Buscar programas, carpetas y más\nClic derecho: menú rápido de Windows")
+            self.clic.connect(dock.abrir_buscador)
+        else:
+            self.setToolTip("Inicio\nClic derecho: menú rápido (apagar, ajustes...)")
+            self.clic.connect(lambda: sw.presionar_teclas(sw.VK_LWIN))
         self.clic_derecho.connect(lambda _: sw.presionar_teclas(sw.VK_LWIN, sw.VK_X))
 
     def pintar_fondo(self, p):
@@ -142,6 +149,17 @@ class BotonApp(Caja):
 
         self.clic.connect(lambda: dock.clic_app(self))
         self.clic_derecho.connect(lambda pos: dock.menu_app(self, pos))
+
+    def mouseReleaseEvent(self, evento):
+        if evento.button() == Qt.MouseButton.MiddleButton and self.ruta:
+            abrir(self.ruta)                  # clic con la rueda = abrir otra ventana
+            return
+        super().mouseReleaseEvent(evento)
+
+    def wheelEvent(self, evento):
+        # Girar la rueda sobre el ícono = pasar de una ventana a otra de esa app
+        if self.ventanas:
+            self.dock.ciclar_ventanas(self, 1 if evento.angleDelta().y() < 0 else -1)
 
     def _animar(self, hacia):
         self.animacion.stop()
@@ -242,6 +260,12 @@ class Dock(QWidget):
         self._modo_edicion = False
         self.ventana_ajustes = None
         self.widgets_sin_espacio = []
+        self.buscador = None
+        self.atajos = None
+        self._oculta_auto = False          # escondida por "ocultar automáticamente"
+        self._oculta_usuario = False       # escondida con el atajo de teclado
+        self._ultimo_dentro = time.monotonic()
+        modulo_widgets.avisar = self.mostrar_aviso
 
         # La fila principal. Su contenido se arma en _armar_todo() (y se puede rearmar en vivo)
         self.capa = QHBoxLayout(self)
@@ -253,6 +277,7 @@ class Dock(QWidget):
         self._timer(1000, self._actualizar_widgets)
         self._timer(700, self._refrescar_apps)
         self._timer(400, self._vigilar)      # rápido, para esconderse apenas pongas pantalla completa
+        self._timer(120, self._vigilar_auto_ocultar)
 
         self._refrescar_apps()
         self._actualizar_widgets()
@@ -279,7 +304,7 @@ class Dock(QWidget):
         self._detener_widgets()
         self._vaciar(self.capa)
 
-        self.capa.addWidget(BotonInicio(self.lado_boton))
+        self.capa.addWidget(BotonInicio(self.lado_boton, self))
         self.capa.addWidget(Separador())
 
         self.zona_apps = QWidget()
@@ -322,8 +347,11 @@ class Dock(QWidget):
     # Aplicar cambios hechos en la ventana de Ajustes (sin reiniciar)
     # -------------------------------------------------------------------------
     def aplicar_config(self, que="todo"):
-        """que = "apps" | "widgets" | "todo" """
+        """que = "apps" | "widgets" | "atajos" | "todo" """
         configuracion.guardar(self.config)
+        if que == "atajos":
+            self._configurar_atajos()
+            return
         if que == "apps":
             self._firma = None
             self._refrescar_apps()
@@ -357,6 +385,8 @@ class Dock(QWidget):
             self.barra_windows.restaurar()
         if not c.get("reservar_espacio", True) and self.espacio is not None:
             self.espacio.liberar()
+        if que == "todo":
+            self._configurar_atajos()
 
         self._armar_todo()
         self._refrescar_apps()
@@ -472,7 +502,7 @@ class Dock(QWidget):
         if nombre == "anio":
             return AnioTile(alto)
         if nombre == "enfoque":
-            return EnfoqueTile(alto)
+            return EnfoqueTile(alto, self.config)
         if nombre == "bandeja":
             if not self.config.get("ocultar_barra_windows", True):
                 return None   # si la barra de Windows queda visible, este botón no hace falta
@@ -500,6 +530,94 @@ class Dock(QWidget):
         # Windows tarda un poquito en "soltar" el espacio de su barra: re-ubicamos al rato
         QTimer.singleShot(400, self.ubicar)
         QApplication.primaryScreen().geometryChanged.connect(lambda _: QTimer.singleShot(500, self.ubicar))
+        self.atajos = Atajos()
+        self.atajos.activado.connect(self._al_atajo)
+        self._configurar_atajos()
+
+    # -------------------------------------------------------------------------
+    # Atajos de teclado, buscador y avisos
+    # -------------------------------------------------------------------------
+    def _configurar_atajos(self):
+        if self.atajos is not None:
+            self.atajos.empezar({"buscador": self.config.get("atajo_buscador", "alt+espacio"),
+                                 "barra": self.config.get("atajo_barra", "ctrl+alt+b")})
+
+    def _al_atajo(self, nombre):
+        if nombre == "buscador":
+            self.abrir_buscador()
+        elif nombre == "barra":
+            self.alternar_barra()
+
+    def abrir_buscador(self):
+        from buscador import Buscador
+        if self.buscador is None:
+            self.buscador = Buscador(self)
+        self.buscador.alternar()
+
+    def alternar_barra(self):
+        """Mostrar / ocultar la barra con el atajo de teclado."""
+        if self.config.get("auto_ocultar"):
+            self._oculta_auto = not self._oculta_auto
+            self._ultimo_dentro = time.monotonic() + 2     # que no se esconda apenas aparece
+            self._ajustar_ancho()
+        elif self._oculta_usuario:
+            self._oculta_usuario = False
+            self.show()
+        else:
+            self._oculta_usuario = True
+            self.hide()
+
+    def mostrar_aviso(self, titulo, texto, tipo="general"):
+        if tipo == "ia" and not self.config.get("avisar_limite_ia", True):
+            return
+        from bienvenida import Aviso
+        self._aviso_actual = Aviso(titulo, texto, segundos=12)
+        self._aviso_actual.mostrar_sobre(self)
+
+    def ciclar_ventanas(self, boton, paso):
+        """Activa la siguiente (o anterior) ventana de esa app."""
+        ventanas = boton.ventanas
+        actual = next((i for i, v in enumerate(ventanas) if v.hwnd == self.ultima_activa), -1)
+        siguiente = ventanas[(actual + paso) % len(ventanas)]
+        sw.activar(siguiente.hwnd)
+        self.ultima_activa = siguiente.hwnd
+
+    # -------------------------------------------------------------------------
+    # Ocultar automáticamente
+    # -------------------------------------------------------------------------
+    def _ocupada(self):
+        """¿Hay algo abierto que necesita la barra visible? (menús, ajustes, escribiendo en Comando…)"""
+        if QApplication.activePopupWidget() is not None:
+            return True
+        if self.ventana_ajustes is not None and self.ventana_ajustes.isVisible():
+            return True
+        foco = QApplication.focusWidget()
+        return foco is not None and self.isAncestorOf(foco)
+
+    def _vigilar_auto_ocultar(self):
+        if not self.config.get("auto_ocultar"):
+            if self._oculta_auto:
+                self._oculta_auto = False
+                self._ajustar_ancho()
+            return
+        if not self.isVisible():
+            return
+        cursor = QCursor.pos()
+        pantalla = QApplication.primaryScreen().geometry()
+        ahora = time.monotonic()
+        if self._oculta_auto:
+            en_borde = cursor.y() >= pantalla.bottom() - 1 if self.abajo else cursor.y() <= pantalla.top()
+            if en_borde and self.x() - 60 <= cursor.x() <= self.x() + self.width() + 60:
+                self._oculta_auto = False
+                self._ultimo_dentro = ahora
+                self._ajustar_ancho()
+        else:
+            cerca = self.geometry().adjusted(-16, -30, 16, 30).contains(cursor)
+            if cerca or self._ocupada():
+                self._ultimo_dentro = ahora
+            elif ahora - self._ultimo_dentro > 1.0:
+                self._oculta_auto = True
+                self._ajustar_ancho()
 
     def ubicar(self):
         pantalla = QApplication.primaryScreen()
@@ -508,7 +626,10 @@ class Dock(QWidget):
         grosor = self.alto + 2 * self.margen
 
         zona = None
-        if self.config.get("reservar_espacio", True) and self.espacio is not None:
+        reservar = self.config.get("reservar_espacio", True) and not self.config.get("auto_ocultar")
+        if not reservar and self.espacio is not None:
+            self.espacio.liberar()
+        if reservar and self.espacio is not None:
             # Windows trabaja en píxeles reales; Qt en píxeles "lógicos". Convertimos.
             real = (round(g.x() * escala), round(g.y() * escala),
                     round((g.x() + g.width()) * escala), round((g.y() + g.height()) * escala))
@@ -570,7 +691,11 @@ class Dock(QWidget):
             izquierda = x + self.margen + (disponible - medida) / 2
         else:
             medida, izquierda = disponible, x + self.margen
-        destino = QRect(int(izquierda), int(y + self.margen), int(medida), self.alto)
+        y_visible = y + self.margen
+        if self._oculta_auto:
+            # Fuera de la pantalla (solo vuelve cuando el mouse toca el borde)
+            y_visible = y + self.alto + 2 * self.margen + 2 if self.abajo else y - self.alto - 2
+        destino = QRect(int(izquierda), int(y_visible), int(medida), self.alto)
 
         animacion = getattr(self, "_animacion", None)
         if not animar or not self.isVisible():
@@ -772,6 +897,7 @@ class Dock(QWidget):
     # -------------------------------------------------------------------------
     def contextMenuEvent(self, evento):
         menu = crear_menu(self)
+        buscar = menu.addAction(f"Buscar…    {self.config.get('atajo_buscador', '').title()}")
         ajustes = menu.addAction("Ajustes de mibarra…")
         editar = menu.addAction("Editar widgets…")
         menu.addSeparator()
@@ -779,7 +905,9 @@ class Dock(QWidget):
         salir = menu.addAction("Cerrar mibarra")
 
         elegida = menu.exec(evento.globalPos())
-        if elegida is ajustes:
+        if elegida is buscar:
+            self.abrir_buscador()
+        elif elegida is ajustes:
             self.abrir_ajustes()
         elif elegida is editar:
             self.abrir_ajustes("widgets")
@@ -806,6 +934,8 @@ class Dock(QWidget):
         if self._limpio:
             return
         self._limpio = True
+        if self.atajos is not None:
+            self.atajos.detener()
         if self.espacio is not None:
             self.espacio.liberar()
         self.barra_windows.restaurar()

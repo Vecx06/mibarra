@@ -161,7 +161,14 @@ class Aviso(VentanaFlotante):
 
     def mostrar_sobre(self, dock):
         g = dock.geometry()
-        y = g.top() - self.height() + 14 if dock.abajo else g.bottom() - 14
-        self.move(g.center().x() - self.width() // 2, y)
+        pantalla = QApplication.primaryScreen().availableGeometry()
+        if getattr(dock, "_oculta_auto", False) or not dock.isVisible():
+            # La barra está escondida: el aviso va pegado al borde de la pantalla
+            y = pantalla.bottom() - self.height() if dock.abajo else pantalla.top()
+            x = pantalla.center().x() - self.width() // 2
+        else:
+            y = g.top() - self.height() + 14 if dock.abajo else g.bottom() - 14
+            x = g.center().x() - self.width() // 2
+        self.move(x, y)
         self.show()
         self.raise_()

@@ -76,8 +76,8 @@ def test_barra_real_en_windows(tmp_path):
         app = QApplication(sys.argv)
         app.setStyleSheet(estilo.hoja_global())
         c = config.por_defecto()
-        c.update({{"widgets": ["capturas", "almacenamiento", "comando", "tema", "conexiones",
-                              "cpu_anillo", "moneda", "notas", "clima", "reloj"]}})
+        c.update({{"widgets": ["claude_limites", "codex_limites", "claude_tokens", "enfoque", "conexiones",
+                              "cpu_anillo", "moneda", "clima", "reloj"]}})
         resultado = {{}}
         def revisar(nombre):
             barra = sw.BarraWindows._ventanas()[0]
@@ -125,6 +125,12 @@ def test_barra_real_en_windows(tmp_path):
         def paso6():
             en_texto("bienvenida", d._bienvenida.grab())
             d._bienvenida.hide()
+            d.abrir_buscador()
+            d.buscador.campo.setText("con")
+            QTimer.singleShot(2500, paso7)
+        def paso7():
+            en_texto("buscador", d.buscador.grab())
+            d.buscador.hide()
             app.quit()
         d = Dock(c); d.show(); d.iniciar()
         app.aboutToQuit.connect(d.limpiar)
@@ -146,3 +152,26 @@ def test_barra_real_en_windows(tmp_path):
     assert sw.user32.IsWindowVisible(barra)
     assert sw.BarraWindows._leer_estado() == estado_antes
     assert not rutas.ARCHIVO_ESTADO_BARRA.exists()
+
+
+def test_atajo_global_de_verdad(app):
+    """Registra un atajo raro, 'aprieta' las teclas y revisa que llegue el aviso."""
+    from PyQt6.QtCore import QCoreApplication
+
+    from atajos import Atajos
+    recibidos = []
+    a = Atajos()
+    a.activado.connect(recibidos.append)
+    a.empezar({"prueba": "ctrl+alt+shift+f11"})
+    assert not a.fallidos
+    VK_CONTROL, VK_ALT, VK_SHIFT, VK_F11 = 0x11, 0x12, 0x10, 0x7A
+    for tecla in (VK_CONTROL, VK_ALT, VK_SHIFT, VK_F11):
+        sw.user32.keybd_event(tecla, 0, 0, 0)
+    for tecla in (VK_F11, VK_SHIFT, VK_ALT, VK_CONTROL):
+        sw.user32.keybd_event(tecla, 0, 2, 0)
+    fin = time.time() + 5
+    while not recibidos and time.time() < fin:
+        QCoreApplication.processEvents()
+        time.sleep(0.05)
+    a.detener()
+    assert recibidos == ["prueba"]

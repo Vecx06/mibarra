@@ -53,13 +53,20 @@ POR_DEFECTO = {
     "moneda": {"cantidad": 1, "desde": "USD", "hacia": "CLP"},
     "bienvenida_vista": False,      # ¿ya vio la pantalla de bienvenida?
     "buscar_actualizaciones": True, # avisar cuando hay una versión nueva en GitHub
+    "auto_ocultar": False,          # la barra se esconde y aparece al llevar el mouse al borde
+    "boton_inicio": "windows",      # "windows" (menú Inicio) o "buscador" (el buscador de mibarra)
+    "atajo_buscador": "alt+espacio",
+    "atajo_barra": "ctrl+alt+b",    # mostrar / ocultar la barra
+    "enfoque_minutos": 25,
+    "avisar_limite_ia": True,       # avisar cuando te queda poco de Claude o Codex
+    "buscador_uso": {},             # qué abres más (para ordenar mejor el buscador)
 }
 
 
 WIDGETS_VALIDOS = [
     "reloj", "anio", "enfoque", "cpu", "ram", "disco", "red", "bateria", "bandeja", "musica",
     "volumen", "clima", "comando", "notas", "conexiones", "tema", "capturas", "bateria_anillo",
-    "cpu_anillo", "almacenamiento", "moneda",
+    "cpu_anillo", "almacenamiento", "moneda", "claude_limites", "claude_tokens", "codex_limites",
 ]
 VERSION_CONFIG = 2
 
@@ -100,8 +107,16 @@ def validar(c):
     if not (len(color) == 7 and color.startswith("#")
             and all(ch in "0123456789abcdefABCDEF" for ch in color[1:])):
         c["color_acento"] = d["color_acento"]
+    c["boton_inicio"] = _opcion(c.get("boton_inicio"), ("windows", "buscador"), d["boton_inicio"])
+    c["enfoque_minutos"] = _entero(c.get("enfoque_minutos"), 5, 180, d["enfoque_minutos"])
+    for clave in ("atajo_buscador", "atajo_barra"):
+        valor = c.get(clave)
+        c[clave] = valor.strip().lower() if isinstance(valor, str) and "+" in valor else d[clave]
+    uso = c.get("buscador_uso")
+    c["buscador_uso"] = {str(k): int(v) for k, v in uso.items()
+                         if isinstance(v, int)} if isinstance(uso, dict) else {}
     for clave in ("ocultar_barra_windows", "reservar_espacio", "esconder_en_pantalla_completa",
-                  "bienvenida_vista", "buscar_actualizaciones"):
+                  "bienvenida_vista", "buscar_actualizaciones", "auto_ocultar", "avisar_limite_ia"):
         c[clave] = bool(c.get(clave, d.get(clave, True)))
 
     # Widgets: solo nombres conocidos y sin repetir (respetando el orden)

@@ -74,8 +74,15 @@ CATALOGO = [
     ("cpu_anillo", "Anillo de CPU", "El procesador como un anillo.", "Sistema", "cpu_anillo"),
     ("almacenamiento", "Almacenamiento", "Espacio libre en el disco.", "Sistema", "almacenamiento"),
     ("moneda", "Moneda", "Conversor de moneda (ej. dólar a peso chileno).", "Finanzas", "moneda"),
+    ("claude_limites", "Límites de Claude", "Cuánto llevas de tu sesión de 5 horas y de la semana. "
+     "Necesita Claude Code con tu sesión iniciada.", "Inteligencia artificial", "claude_limites"),
+    ("claude_tokens", "Tokens de Claude Code", "Tokens que llevas hoy en Claude Code (se leen de tu PC).",
+     "Inteligencia artificial", "claude_tokens"),
+    ("codex_limites", "Límites de Codex", "Tu sesión de 5 horas y la semana en Codex (ChatGPT).",
+     "Inteligencia artificial", "codex_limites"),
 ]
-ORDEN_CATEGORIAS = ["Productividad", "Controles", "Reloj y fecha", "Sistema", "Multimedia", "Clima", "Finanzas"]
+ORDEN_CATEGORIAS = ["Inteligencia artificial", "Productividad", "Controles", "Reloj y fecha", "Sistema",
+                    "Multimedia", "Clima", "Finanzas"]
 NOMBRES = {c[0]: c[1] for c in CATALOGO}
 
 COLORES_ACENTO = ["#0a84ff", "#bf5af2", "#ff375f", "#ff9f0a", "#30d158", "#64d2ff", "#8e8e93"]
@@ -840,27 +847,82 @@ class Ajustes(QWidget):
     # Página: Comportamiento
     # -------------------------------------------------------------------------
     def _pagina_comportamiento(self, capa):
+        import atajos
         cfg = self.dock.config
+
+        # --- La barra ---
+        capa.addWidget(etiqueta("La barra", "seccion"))
         t, c = tarjeta()
         opciones = [
+            ("auto_ocultar", "Ocultar automáticamente",
+             "La barra se esconde sola y aparece al llevar el mouse al borde de la pantalla.", False),
             ("ocultar_barra_windows", "Ocultar la barra de Windows",
-             "Mientras mibarra esté abierta. Al cerrarla vuelve sola."),
+             "Mientras mibarra esté abierta. Al cerrarla vuelve sola.", True),
             ("reservar_espacio", "Reservar espacio",
-             "Las ventanas maximizadas no quedan debajo de la barra."),
+             "Las ventanas maximizadas no quedan debajo de la barra (no aplica si se oculta sola).", True),
             ("esconder_en_pantalla_completa", "Esconder en pantalla completa",
-             "Con videos, juegos o presentaciones."),
+             "Con videos, juegos o presentaciones.", True),
         ]
-        for clave, titulo, descripcion in opciones:
-            interruptor = Interruptor(bool(cfg.get(clave, True)))
+        for clave, titulo, descripcion, defecto in opciones:
+            interruptor = Interruptor(bool(cfg.get(clave, defecto)))
             interruptor.cambiado.connect(lambda v, k=clave: self._poner(k, v, "todo"))
             c.addWidget(fila(titulo, descripcion, interruptor))
             c.addWidget(linea())
+        inicio_b = Segmentado([("windows", "Menú de Windows"), ("buscador", "Buscador")],
+                              cfg.get("boton_inicio", "windows"))
+        inicio_b.cambiado.connect(lambda v: self._poner("boton_inicio", v, "todo"))
+        c.addWidget(fila("Botón de inicio", "Qué se abre al hacer clic en los cuadraditos de la izquierda.", inicio_b))
+        c.addWidget(linea())
         inicio = Interruptor(sw.inicio_automatico_activo())
         inicio.setEnabled(sw.ES_WINDOWS)
         inicio.cambiado.connect(
             lambda v: sw.poner_inicio_automatico(v, self.dock._comando_inicio()))
         c.addWidget(fila("Abrir al iniciar Windows", "mibarra se abre sola cuando prendes el PC.", inicio))
         capa.addWidget(t)
+
+        # --- Atajos de teclado ---
+        capa.addWidget(etiqueta("Atajos de teclado (funcionan en cualquier parte)", "seccion"))
+        t2, c2 = tarjeta()
+        fallidos = self.dock.atajos.fallidos if self.dock.atajos is not None else []
+        for clave, nombre, titulo, descripcion in (
+                ("atajo_buscador", "buscador", "Abrir el buscador", "Busca programas, carpetas, ajustes y más."),
+                ("atajo_barra", "barra", "Mostrar u ocultar la barra", "Útil para tener la pantalla entera.")):
+            campo = QLineEdit(atajos.bonito(cfg.get(clave, "")))
+            campo.setObjectName("campo")
+            campo.setFixedWidth(170)
+            campo.setToolTip("Escribe el atajo, por ejemplo: alt + espacio, ctrl + alt + b, win + shift + k")
+            aviso = descripcion
+            if nombre in fallidos:
+                aviso = "⚠️ Otro programa ya usa este atajo. Prueba con otro."
+            campo.editingFinished.connect(lambda k=clave, w=campo: self._cambiar_atajo(k, w))
+            c2.addWidget(fila(titulo, aviso, campo))
+            if clave == "atajo_buscador":
+                c2.addWidget(linea())
+        capa.addWidget(t2)
+
+        # --- Avisos ---
+        capa.addWidget(etiqueta("Avisos", "seccion"))
+        t3, c3 = tarjeta()
+        avisar_ia = Interruptor(bool(cfg.get("avisar_limite_ia", True)))
+        avisar_ia.cambiado.connect(lambda v: self._poner("avisar_limite_ia", v, "apps"))
+        c3.addWidget(fila("Cuando te quede poco de Claude o Codex",
+                          "Te avisa al pasar el 90% de tu sesión de 5 horas.", avisar_ia))
+        capa.addWidget(t3)
+
+    def _cambiar_atajo(self, clave, campo):
+        import atajos
+        texto = campo.text().replace(" ", "").lower()
+        if texto == self.dock.config.get(clave, ""):
+            return
+        try:
+            atajos.interpretar(texto)
+        except ValueError as error:
+            campo.setStyleSheet("border: 2px solid #ff3b30;")
+            campo.setToolTip(str(error))
+            return
+        self.dock.config[clave] = texto
+        self._guardar("atajos")
+        QTimer.singleShot(300, self.refrescar)   # para mostrar si Windows lo aceptó
 
     # -------------------------------------------------------------------------
     # Página: Clima
