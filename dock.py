@@ -329,6 +329,10 @@ class Dock(QWidget):
         self.capa.addWidget(self.zona_widgets)
 
         self.capa.addWidget(BotonEscritorio(self.lado_boton))
+        for i in range(self.capa.count()):
+            pieza = self.capa.itemAt(i).widget()
+            if pieza is not None:
+                pieza.show()     # Qt los mostraría recién en la próxima vuelta; los necesitamos ya para medir
 
         self.botones = {}
         self._firma = None
@@ -343,6 +347,7 @@ class Dock(QWidget):
             if w is not None:
                 w.id_widget = nombre
                 self.capa_widgets.addWidget(w)
+                aplicar_visibilidad(w)
                 self.widgets.append(w)
         if self._modo_edicion:
             self._poner_insignias()
@@ -694,7 +699,9 @@ class Dock(QWidget):
         disponible = ancho - 2 * self.margen
         # Solo volvemos a medir si cambió algo que afecte el ancho (apps, widgets, pantalla, tamaño)
         firma = (disponible, self.alto, tuple(self.botones),
-                 tuple((w.id_widget, bool(getattr(w, "oculto_propio", False))) for w in self.widgets))
+                 tuple(b.isVisibleTo(self) for b in self.botones.values()),
+                 tuple((w.id_widget, bool(getattr(w, "oculto_propio", False)),
+                        bool(getattr(w, "sin_espacio", False)) or w.isVisibleTo(self)) for w in self.widgets))
         if firma != self._firma_medida:
             self._acomodar_desborde(disponible)
             self._medida = self._medir()
@@ -817,7 +824,9 @@ class Dock(QWidget):
         for clave, g in fijadas:
             self._agregar_boton(clave, g)
         if fijadas and abiertas:
-            self.capa_apps.addWidget(Separador())
+            separador = Separador()
+            self.capa_apps.addWidget(separador)
+            separador.show()
         for clave, g in abiertas:
             self._agregar_boton(clave, g)
         self._firma_medida = None
@@ -826,6 +835,7 @@ class Dock(QWidget):
     def _agregar_boton(self, clave, g):
         b = BotonApp(self, clave, g["nombre"], g["ruta"], g["emoji"], g["fijada"])
         self.capa_apps.addWidget(b)
+        b.show()
         self.botones[clave] = b
 
     # -------------------------------------------------------------------------

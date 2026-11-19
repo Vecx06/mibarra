@@ -156,3 +156,17 @@ def test_la_barra_no_parpadea_cada_segundo(dock, app):
         assert dock.geometry() == antes
     animacion = getattr(dock, "_animacion", None)
     assert animacion is None or animacion.state() != animacion.State.Running
+
+
+def test_cambiar_tema_no_deja_la_barra_angosta(dock, app):
+    """Regresión: después de rearmar la barra (cambiar tema), debe medir su contenido real."""
+    dock.config["widgets"] = ["clima", "reloj"]
+    dock.aplicar_config("todo")
+    app.processEvents()
+    dock._ajustar_ancho(animar=False)
+    ancho_oscuro = dock.width()
+    dock.config["tema"] = "claro" if dock.config.get("tema") != "claro" else "oscuro"
+    dock.aplicar_config("todo")
+    dock._ajustar_ancho(animar=False)          # inmediatamente, sin esperar al bucle de eventos
+    assert dock.width() == ancho_oscuro
+    assert dock.width() > 200
