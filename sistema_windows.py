@@ -19,7 +19,7 @@ import json
 import os
 import sys
 from collections import namedtuple
-from pathlib import Path
+import rutas
 
 ES_WINDOWS = sys.platform == "win32"
 
@@ -27,7 +27,7 @@ ES_WINDOWS = sys.platform == "win32"
 Ventana = namedtuple("Ventana", "hwnd titulo exe pid")
 
 # Aquí guardamos cómo estaba la barra de Windows antes de tocarla (para poder dejarla igual)
-ARCHIVO_ESTADO = Path(__file__).resolve().parent / "estado_barra_windows.json"
+ARCHIVO_ESTADO = rutas.ARCHIVO_ESTADO_BARRA
 
 # ----------------------------------------------------------------------------
 # Constantes de Windows (son números fijos definidos por Microsoft)
@@ -137,6 +137,8 @@ if ES_WINDOWS:
     _firmar(kernel32.QueryFullProcessImageNameW,
             [wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR, ctypes.POINTER(wintypes.DWORD)])
     _firmar(kernel32.CloseHandle, [wintypes.HANDLE])
+    _firmar(kernel32.WaitForSingleObject, [wintypes.HANDLE, wintypes.DWORD], wintypes.DWORD)
+    _firmar(kernel32.CreateMutexW, [ctypes.c_void_p, wintypes.BOOL, wintypes.LPCWSTR], wintypes.HANDLE)
     _firmar(shell32.SHAppBarMessage, [wintypes.DWORD, ctypes.POINTER(APPBARDATA)], ctypes.c_size_t)
     _firmar(shell32.SHQueryUserNotificationState, [ctypes.POINTER(ctypes.c_int)], ctypes.c_long)
     _firmar(dwmapi.DwmGetWindowAttribute, [H, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD], ctypes.c_long)
@@ -423,10 +425,13 @@ class BarraWindows:
                 self._estado_original = json.loads(ARCHIVO_ESTADO.read_text())["estado_original"]
             except (OSError, ValueError, KeyError):
                 self._estado_original = self._leer_estado()
-                try:
-                    ARCHIVO_ESTADO.write_text(json.dumps({"estado_original": self._estado_original}))
-                except OSError:
-                    pass
+            try:
+                # Guardamos también nuestro número de proceso: así el guardián sabe
+                # que este archivo es "nuestro" y no de otra mibarra recién abierta.
+                ARCHIVO_ESTADO.write_text(json.dumps({"estado_original": self._estado_original,
+                                                      "pid": os.getpid()}))
+            except OSError:
+                pass
         self._poner_estado(ABS_AUTOHIDE)
         for h in self._ventanas():
             user32.ShowWindow(h, SW_HIDE)
@@ -469,14 +474,24 @@ class BarraWindows:
         self.pausada = False
 
     @classmethod
-    def restaurar_desde_archivo(cls):
-        """Para restaurar_barra.bat: arregla la barra aunque mibarra no esté abierta."""
+    def restaurar_desde_archivo(cls, solo_si_es_de_pid=None):
+        """
+        Arregla la barra de Windows aunque mibarra no esté abierta.
+        solo_si_es_de_pid: el guardián lo usa para restaurar SOLO si el archivo
+        lo dejó el proceso que estaba vigilando (y no otra mibarra más nueva).
+        Devuelve True si restauró.
+        """
         barra = cls()
         try:
-            barra._estado_original = json.loads(ARCHIVO_ESTADO.read_text())["estado_original"]
-        except (OSError, ValueError, KeyError):
-            barra._estado_original = ABS_ALWAYSONTOP   # = barra normal, siempre visible
+            datos = json.loads(ARCHIVO_ESTADO.read_text())
+        except (OSError, ValueError):
+            datos = None
+        if solo_si_es_de_pid is not None:
+            if not datos or datos.get("pid") != solo_si_es_de_pid:
+                return False
+        barra._estado_original = (datos or {}).get("estado_original", ABS_ALWAYSONTOP)
         barra.restaurar()
+        return True
 
 
 # ----------------------------------------------------------------------------
@@ -609,3 +624,27 @@ def red_wifi():
         if linea.startswith("SSID") and ":" in linea:     # ojo: no confundir con "BSSID"
             return linea.split(":", 1)[1].strip()
     return ""
+
+
+# ----------------------------------------------------------------------------
+# Para el guardián y el instalador
+# ----------------------------------------------------------------------------
+def esperar_a_que_termine(pid):
+    """Se queda esperando hasta que el proceso `pid` se cierre (como sea que se cierre)."""
+    if not ES_WINDOWS:
+        return
+    SYNCHRONIZE = 0x00100000
+    h = kernel32.OpenProcess(SYNCHRONIZE, False, pid)
+    if h:
+        kernel32.WaitForSingleObject(h, 0xFFFFFFFF)   # 0xFFFFFFFF = esperar para siempre
+        kernel32.CloseHandle(h)
+
+
+_mutex = None
+
+
+def marcar_instancia():
+    """Crea un 'mutex' con nombre: el instalador lo usa para saber si mibarra está abierta."""
+    global _mutex
+    if ES_WINDOWS and _mutex is None:
+        _mutex = kernel32.CreateMutexW(None, False, "mibarra_instancia")

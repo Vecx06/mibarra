@@ -5,3 +5,11 @@ error.log
 __pycache__/
 *.pyc
 notas.txt
+config.con-error.json
+config.tmp
+mibarra.log*
+build/
+dist/
+capturas/
+.pytest_cache/
+.ruff_cache/

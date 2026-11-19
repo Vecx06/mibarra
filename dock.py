@@ -9,7 +9,6 @@ Cada 1 s actualiza los widgets (hora, CPU, RAM...).
 """
 
 import os
-import sys
 from pathlib import Path
 
 from PyQt6.QtCore import (QEasingCurve, QFileInfo, QPoint, QProcess, QPropertyAnimation, QRect,
@@ -19,11 +18,13 @@ from PyQt6.QtWidgets import QApplication, QFileIconProvider, QHBoxLayout, QWidge
 
 import config as configuracion
 import mas_widgets
+import rutas
+from registro import log
 import estilo
 import sistema_windows as sw
 from widgets import (AnioTile, BandejaTile, BateriaTile, Caja, ClimaTile, CpuTile, DiscoTile,
                      EnfoqueTile, InsigniaQuitar, MusicaWidget, RamTile, RedTile, RelojTile,
-                     VolumenTile, abrir, crear_menu, recortar)
+                     VolumenTile, abrir, aplicar_visibilidad, crear_menu, recortar)
 
 # =============================================================================
 # Íconos de programas
@@ -240,6 +241,7 @@ class Dock(QWidget):
         self._limpio = False
         self._modo_edicion = False
         self.ventana_ajustes = None
+        self.widgets_sin_espacio = []
 
         # La fila principal. Su contenido se arma en _armar_todo() (y se puede rearmar en vivo)
         self.capa = QHBoxLayout(self)
@@ -385,6 +387,40 @@ class Dock(QWidget):
             if self.ventana_ajustes is not None:
                 self.ventana_ajustes.refrescar()
 
+    # -------------------------------------------------------------------------
+    # Bienvenida y actualizaciones
+    # -------------------------------------------------------------------------
+    def mostrar_bienvenida(self):
+        from bienvenida import Bienvenida
+        self._bienvenida = Bienvenida(self)
+        self._bienvenida.mostrar()
+
+    def revisar_actualizaciones(self, al_terminar=None):
+        """
+        Pregunta a GitHub (en otro hilo) si hay versión nueva.
+        Sin al_terminar: si hay una, muestra un aviso sobre la barra.
+        Con al_terminar: le entrega el resultado a esa función (la usan los Ajustes).
+        """
+        import actualizaciones
+        from widgets import TrabajoUnaVez
+
+        def recibir(respuesta):
+            ok, info = respuesta
+            if al_terminar is not None:
+                al_terminar(ok, info)
+            elif ok and info:
+                from bienvenida import Aviso
+                self._aviso = Aviso(f"mibarra {info['version']} ya está disponible",
+                                    "Trae mejoras y arreglos. Tus ajustes se mantienen al actualizar.",
+                                    "Ver novedades", info["url"])
+                self._aviso.mostrar_sobre(self)
+            if not ok:
+                log.info("No pude revisar actualizaciones: %s", info)
+
+        self._trabajo_actualizacion = TrabajoUnaVez(actualizaciones.consultar)
+        self._trabajo_actualizacion.listo.connect(recibir)
+        self._trabajo_actualizacion.empezar()
+
     def abrir_ajustes(self, pagina=None):
         from ajustes import Ajustes   # se importa aquí para no cargarlo si nunca se usa
         if self.ventana_ajustes is None:
@@ -443,7 +479,7 @@ class Dock(QWidget):
             b = BandejaTile(alto)
             b.clic.connect(self._alternar_bandeja)
             return b
-        print(f"[mibarra] Widget desconocido en config.json: {nombre!r}")
+        log.warning("Widget desconocido en config.json: %r", nombre)
         return None
 
     # -------------------------------------------------------------------------
@@ -491,6 +527,33 @@ class Dock(QWidget):
     def _centrada(self):
         return self.config.get("alineacion", "centro") == "centro"
 
+    def _medir(self):
+        """Cuánto mide el contenido de la barra AHORA (recalculando las capas de adentro hacia afuera)."""
+        for capa in (self.capa_apps, self.capa_widgets, self.capa):
+            capa.invalidate()
+            capa.activate()
+        return self.capa.sizeHint().width()
+
+    def _acomodar_desborde(self, disponible):
+        """
+        Si no caben todos los widgets, escondemos los de más a la izquierda
+        (el reloj nunca se esconde) hasta que la barra quepa en la pantalla.
+        """
+        for w in self.widgets:
+            if getattr(w, "sin_espacio", False):
+                w.sin_espacio = False
+                aplicar_visibilidad(w)
+        candidatos = [w for w in self.widgets if w.id_widget != "reloj" and w.isVisibleTo(self)]
+        while self._medir() > disponible and candidatos:
+            w = candidatos.pop(0)
+            w.sin_espacio = True
+            aplicar_visibilidad(w)
+        sin_espacio = [w.id_widget for w in self.widgets if getattr(w, "sin_espacio", False)]
+        if sin_espacio != self.widgets_sin_espacio:
+            self.widgets_sin_espacio = sin_espacio
+            if sin_espacio:
+                log.info("No caben todos los widgets; escondidos por espacio: %s", ", ".join(sin_espacio))
+
     def _ajustar_ancho(self, animar=True):
         """
         Centrada: la barra mide JUSTO lo que ocupa su contenido y queda al medio,
@@ -501,31 +564,33 @@ class Dock(QWidget):
             return
         x, y, ancho = self._zona
         disponible = ancho - 2 * self.margen
+        self._acomodar_desborde(disponible)
         if self._centrada():
-            self.capa.activate()                       # que la capa recalcule cuánto mide
-            medida = min(self.capa.sizeHint().width(), disponible)
+            medida = min(self._medir(), disponible)
             izquierda = x + self.margen + (disponible - medida) / 2
         else:
             medida, izquierda = disponible, x + self.margen
         destino = QRect(int(izquierda), int(y + self.margen), int(medida), self.alto)
 
         animacion = getattr(self, "_animacion", None)
+        if not animar or not self.isVisible():
+            if animacion is not None:
+                animacion.stop()
+            if destino != self.geometry():
+                self.setGeometry(destino)
+            return
         if animacion is not None and animacion.state() == QPropertyAnimation.State.Running:
             if animacion.endValue() == destino:
                 return
             animacion.stop()
         elif destino == self.geometry():
             return
-
-        if animar and self.isVisible():
-            self._animacion = QPropertyAnimation(self, b"geometry", self)
-            self._animacion.setDuration(180)
-            self._animacion.setEasingCurve(QEasingCurve.Type.OutCubic)
-            self._animacion.setStartValue(self.geometry())
-            self._animacion.setEndValue(destino)
-            self._animacion.start()
-        else:
-            self.setGeometry(destino)
+        self._animacion = QPropertyAnimation(self, b"geometry", self)
+        self._animacion.setDuration(180)
+        self._animacion.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._animacion.setStartValue(self.geometry())
+        self._animacion.setEndValue(destino)
+        self._animacion.start()
 
     # -------------------------------------------------------------------------
     # Dibujo del fondo
@@ -724,12 +789,8 @@ class Dock(QWidget):
             QApplication.quit()
 
     def _comando_inicio(self):
-        python = Path(sys.executable)
-        sin_consola = python.with_name("pythonw.exe")   # pythonw = Python sin ventana negra
-        if sin_consola.exists():
-            python = sin_consola
-        principal = Path(__file__).resolve().parent / "main.py"
-        return f'"{python}" "{principal}"'
+        programa, argumentos = rutas.comando_propio()
+        return " ".join(f'"{x}"' for x in [programa, *argumentos])
 
     def _alternar_bandeja(self):
         if self.barra_windows.pausada:
@@ -754,6 +815,6 @@ class Dock(QWidget):
         candado = getattr(QApplication.instance(), "candado", None)
         if candado is not None:
             candado.unlock()
-        principal = str(Path(__file__).resolve().parent / "main.py")
-        QProcess.startDetached(sys.executable, [principal])
+        programa, argumentos = rutas.comando_propio()
+        QProcess.startDetached(programa, argumentos)
         QApplication.quit()

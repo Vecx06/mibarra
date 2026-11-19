@@ -16,20 +16,24 @@ Está armada así:
 
 import json
 import os
+import webbrowser
+from pathlib import Path
 import threading
 import urllib.parse
 import urllib.request
 
 from PyQt6.QtCore import QObject, QRectF, Qt, QTimer, QVariantAnimation, pyqtSignal
 from PyQt6.QtGui import QColor, QFontMetrics, QIcon, QPainter, QPen, QPixmap
-from PyQt6.QtWidgets import (QFileDialog, QFrame, QGraphicsDropShadowEffect, QGridLayout,
+from PyQt6.QtWidgets import (QFileDialog, QMessageBox, QFrame, QGraphicsDropShadowEffect, QGridLayout,
                              QHBoxLayout, QLabel, QLineEdit, QPushButton, QScrollArea, QSlider,
                              QStackedWidget, QVBoxLayout, QWidget, QApplication)
 
 import config as configuracion
+import rutas
 import estilo
 import sistema_windows as sw
 import mas_widgets
+from version import VERSION
 from widgets import Tile, abrir
 
 AZUL = "#0a84ff"
@@ -348,10 +352,10 @@ def boton(texto, tipo="pill"):
 
 
 def linea():
-    l = QFrame()
-    l.setObjectName("linea")
-    l.setFrameShape(QFrame.Shape.HLine)
-    return l
+    raya = QFrame()
+    raya.setObjectName("linea")
+    raya.setFrameShape(QFrame.Shape.HLine)
+    return raya
 
 
 def tarjeta():
@@ -464,7 +468,7 @@ class Ajustes(QWidget):
             capa_lateral.addWidget(b)
             self.botones_nav[clave] = b
         capa_lateral.addStretch()
-        capa_lateral.addWidget(etiqueta("mibarra 1.3", "suave"))
+        capa_lateral.addWidget(etiqueta(f"mibarra {VERSION}", "suave"))
         principal.addWidget(lateral)
 
         # --- Contenido ---
@@ -572,6 +576,15 @@ class Ajustes(QWidget):
         activos = self.dock.config.setdefault("widgets", [])
         self.insignia.setText(f"{len(activos)} en la barra")
         self.insignia.show()
+
+        # Aviso si la barra no alcanza a mostrar todos
+        if self.dock.widgets_sin_espacio:
+            nombres = ", ".join(NOMBRES.get(w, w) for w in self.dock.widgets_sin_espacio)
+            aviso = etiqueta(f"⚠️  No caben todos en tu pantalla, así que se escondieron: <b>{nombres}</b>. "
+                             "Quita alguno, achica la barra (Apariencia › Tamaño) o muévelos más a la derecha.")
+            aviso.setStyleSheet("background: #fff4d6; border: 1px solid #f5d77a; border-radius: 10px; "
+                                "padding: 10px 12px; color: #6b4e00;")
+            capa.addWidget(aviso)
 
         # 1) Orden actual en la barra: "fichas" en filas de 3, con ‹ › para mover y ✕ para quitar
         capa.addWidget(etiqueta("En tu barra (de izquierda a derecha)", "seccion"))
@@ -835,7 +848,7 @@ class Ajustes(QWidget):
             ("esconder_en_pantalla_completa", "Esconder en pantalla completa",
              "Con videos, juegos o presentaciones."),
         ]
-        for i, (clave, titulo, descripcion) in enumerate(opciones):
+        for clave, titulo, descripcion in opciones:
             interruptor = Interruptor(bool(cfg.get(clave, True)))
             interruptor.cambiado.connect(lambda v, k=clave: self._poner(k, v, "todo"))
             c.addWidget(fila(titulo, descripcion, interruptor))
@@ -980,23 +993,144 @@ class Ajustes(QWidget):
     # Página: Acerca de
     # -------------------------------------------------------------------------
     def _pagina_acerca(self, capa):
+        from logo import dibujar_logo
+        from version import REPOSITORIO
+
+        # --- Cabecera con logo, versión y actualizaciones ---
         t, c = tarjeta()
-        c.addWidget(etiqueta("mibarra", "titulo"))
-        c.addWidget(etiqueta("Versión 1.3 · Hecha en Python con PyQt6", "suave"))
-        c.addWidget(etiqueta("Una barra para Windows con tus apps y widgets en vivo. "
-                             "Todo se guarda en config.json, en la carpeta de mibarra."))
+        renglon = QHBoxLayout()
+        logo = QLabel()
+        logo.setPixmap(dibujar_logo(128).scaled(64, 64, Qt.AspectRatioMode.KeepAspectRatio,
+                                                 Qt.TransformationMode.SmoothTransformation))
+        renglon.addWidget(logo)
+        renglon.addSpacing(8)
+        textos = QVBoxLayout()
+        textos.setSpacing(2)
+        textos.addWidget(etiqueta("mibarra", "titulo"))
+        textos.addWidget(etiqueta(f"Versión {VERSION} · Licencia MIT · Hecha en Python con PyQt6", "suave"))
+        self.estado_actualizacion = etiqueta("", "suave")
+        textos.addWidget(self.estado_actualizacion)
+        renglon.addLayout(textos, 1)
+        buscar = boton("Buscar actualizaciones", "pill")
+        buscar.clicked.connect(self._buscar_actualizacion)
+        renglon.addWidget(buscar, 0, Qt.AlignmentFlag.AlignVCenter)
+        c.addLayout(renglon)
+        c.addWidget(linea())
+        avisar = Interruptor(bool(self.dock.config.get("buscar_actualizaciones", True)))
+        avisar.cambiado.connect(lambda v: self._poner("buscar_actualizaciones", v, "apps"))
+        c.addWidget(fila("Avisarme cuando haya una versión nueva", "Revisa GitHub al abrir mibarra.", avisar))
         capa.addWidget(t)
 
+        # --- Tus ajustes ---
+        capa.addWidget(etiqueta("Tus ajustes", "seccion"))
         t2, c2 = tarjeta()
+        exportar = boton("Exportar…", "pill")
+        exportar.clicked.connect(self._exportar)
+        c2.addWidget(fila("Respaldar", "Guarda tus ajustes en un archivo (para otro PC o por si acaso).", exportar))
+        c2.addWidget(linea())
+        importar = boton("Importar…", "pill")
+        importar.clicked.connect(self._importar)
+        c2.addWidget(fila("Recuperar", "Carga ajustes desde un respaldo.", importar))
+        c2.addWidget(linea())
+        restablecer = boton("Restablecer", "pillRojo")
+        restablecer.clicked.connect(self._restablecer)
+        c2.addWidget(fila("Valores de fábrica", "Vuelve todo a como venía. Tus notas no se borran.", restablecer))
+        capa.addWidget(t2)
+
+        # --- Ayuda ---
+        capa.addWidget(etiqueta("Ayuda", "seccion"))
+        t3, c3 = tarjeta()
+        carpeta = boton("Abrir carpeta", "pill")
+        carpeta.clicked.connect(lambda: abrir(str(rutas.CARPETA_DATOS)))
+        c3.addWidget(fila("Carpeta de datos", "Donde están tus ajustes, notas y el registro de errores.", carpeta))
+        c3.addWidget(linea())
+        registro_b = boton("Ver registro", "pill")
+        registro_b.clicked.connect(lambda: abrir(str(rutas.ARCHIVO_REGISTRO)))
+        c3.addWidget(fila("Registro de errores", "Si algo falla, adjunta este archivo al reportarlo.", registro_b))
+        c3.addWidget(linea())
+        reportar = boton("Reportar un problema", "pill")
+        reportar.clicked.connect(lambda: webbrowser.open(f"https://github.com/{REPOSITORIO}/issues/new/choose"))
+        c3.addWidget(fila("¿Encontraste un error o tienes una idea?", "Cuéntalo en GitHub.", reportar))
+        c3.addWidget(linea())
+        pagina = boton("Abrir GitHub", "pill")
+        pagina.clicked.connect(lambda: webbrowser.open(f"https://github.com/{REPOSITORIO}"))
+        c3.addWidget(fila("Página del proyecto", "Código, novedades y descargas.", pagina))
+        capa.addWidget(t3)
+
+        # --- Privacidad ---
+        capa.addWidget(etiqueta("Privacidad", "seccion"))
+        t4, c4 = tarjeta()
+        c4.addWidget(etiqueta(
+            "mibarra no tiene cuentas ni envía datos tuyos a ningún servidor propio. Solo se conecta a "
+            "internet para: el clima (Open-Meteo, con la ciudad que elijas), la moneda (open.er-api.com, "
+            "con las monedas que elijas) y revisar si hay versiones nuevas (GitHub). Tus notas y ajustes "
+            "se quedan en tu PC.", "suave"))
+        capa.addWidget(t4)
+
+        # --- Barra ---
+        t5, c5 = tarjeta()
         recargar = boton("Recargar mibarra", "pill")
         recargar.clicked.connect(self.dock.reiniciar)
-        c2.addWidget(fila("Recargar", "Cierra y vuelve a abrir la barra.", recargar))
-        c2.addWidget(linea())
-        archivo = boton("Abrir config.json", "pill")
-        archivo.clicked.connect(lambda: abrir(str(configuracion.RUTA_CONFIG)))
-        c2.addWidget(fila("Archivo de ajustes", "Para usuarios avanzados.", archivo))
-        c2.addWidget(linea())
+        c5.addWidget(fila("Recargar", "Cierra y vuelve a abrir la barra.", recargar))
+        c5.addWidget(linea())
         salir = boton("Cerrar mibarra", "pillRojo")
         salir.clicked.connect(QApplication.quit)
-        c2.addWidget(fila("Salir", "La barra de Windows vuelve a la normalidad.", salir))
-        capa.addWidget(t2)
+        c5.addWidget(fila("Salir", "La barra de Windows vuelve a la normalidad.", salir))
+        capa.addWidget(t5)
+
+    def _buscar_actualizacion(self):
+        self.estado_actualizacion.setText("Buscando…")
+
+        def listo(ok, info):
+            try:
+                if not ok:
+                    self.estado_actualizacion.setText("No pude conectarme a GitHub. Revisa tu internet.")
+                elif info:
+                    self.estado_actualizacion.setText(
+                        f"<b>Hay una versión nueva: {info['version']}</b> · "
+                        f"<a href=\"{info['url']}\">Descargar</a>")
+                    self.estado_actualizacion.setOpenExternalLinks(True)
+                else:
+                    self.estado_actualizacion.setText("✓ Tienes la última versión.")
+            except RuntimeError:
+                pass   # la página se cerró mientras buscábamos
+
+        self.dock.revisar_actualizaciones(al_terminar=listo)
+
+    def _exportar(self):
+        destino, _ = QFileDialog.getSaveFileName(self, "Guardar respaldo de ajustes",
+                                                 str(Path.home() / "mibarra-ajustes.json"), "Ajustes (*.json)")
+        if destino:
+            Path(destino).write_text(json.dumps(self.dock.config, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def _importar(self):
+        origen, _ = QFileDialog.getOpenFileName(self, "Cargar respaldo de ajustes", str(Path.home()),
+                                                "Ajustes (*.json)")
+        if not origen:
+            return
+        try:
+            datos = json.loads(Path(origen).read_text(encoding="utf-8"))
+            if not isinstance(datos, dict):
+                raise ValueError
+        except (OSError, ValueError):
+            QMessageBox.warning(self, "No se pudo importar", "Ese archivo no es un respaldo de mibarra válido.")
+            return
+        nuevo = dict(configuracion.por_defecto())
+        nuevo.update(datos)
+        self._reemplazar_config(configuracion.validar(nuevo))
+
+    def _restablecer(self):
+        respuesta = QMessageBox.question(
+            self, "Restablecer mibarra",
+            "¿Volver todos los ajustes a como venían? Tus notas no se borran.\n\n"
+            "Consejo: antes puedes usar «Exportar…» para guardar un respaldo.")
+        if respuesta == QMessageBox.StandardButton.Yes:
+            self._reemplazar_config(configuracion.por_defecto())
+
+    def _reemplazar_config(self, nuevo):
+        # Cambiamos el CONTENIDO del diccionario (no el diccionario), porque los widgets
+        # guardan una referencia a él.
+        self.dock.config.clear()
+        self.dock.config.update(nuevo)
+        self._guardar("todo")
+        self.refrescar()

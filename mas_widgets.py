@@ -34,12 +34,12 @@ from PyQt6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QLineEdit, QPlainTextE
                              QVBoxLayout, QWidget)
 
 import config as configuracion
+import rutas
 import estilo
 import sistema_windows as sw
-from widgets import Caja, Tile, TrabajoRepetido, abrir, recortar
+from widgets import Caja, Tile, TrabajoRepetido, abrir, aplicar_visibilidad, recortar
 
-CARPETA = Path(__file__).resolve().parent
-ARCHIVO_NOTAS = CARPETA / "notas.txt"
+ARCHIVO_NOTAS = rutas.ARCHIVO_NOTAS
 
 # Encender/apagar Wi-Fi y Bluetooth necesita un paquete opcional (winrt).
 try:
@@ -301,7 +301,7 @@ class NotasWidget(Caja):
 
     def _leer(self):
         try:
-            lineas = [l.strip() for l in ARCHIVO_NOTAS.read_text(encoding="utf-8").splitlines() if l.strip()]
+            lineas = [x.strip() for x in ARCHIVO_NOTAS.read_text(encoding="utf-8").splitlines() if x.strip()]
         except OSError:
             lineas = []
         self.titulo = lineas[0] if lineas else "Notas"
@@ -547,10 +547,10 @@ class AnilloWidget(Caja):
             return
         if self.tipo == "bateria":
             b = psutil.sensors_battery()
+            self.oculto_propio = b is None
+            aplicar_visibilidad(self)
             if b is None:
-                self.hide()
                 return
-            self.show()
             self.valor, self.cargando = b.percent, bool(b.power_plugged)
             self.setToolTip(f"Batería {b.percent:.0f}%" + (" · cargando" if self.cargando else ""))
         else:

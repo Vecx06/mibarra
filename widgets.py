@@ -28,6 +28,7 @@ from PyQt6.QtWidgets import (QApplication, QCalendarWidget, QFrame, QLabel, QMen
 
 import estilo
 import sistema_windows as sw
+from registro import log
 
 # La info de "qué canción suena" necesita un paquete extra (winrt). Si no está, igual
 # funcionan los botones de música; solo no se ve el nombre de la canción.
@@ -65,12 +66,20 @@ def recortar(texto, fuente, ancho):
     return QFontMetrics(fuente).elidedText(texto, Qt.TextElideMode.ElideRight, max(0, int(ancho)))
 
 
+def aplicar_visibilidad(widget):
+    """
+    Un widget se ve si: él mismo no pidió esconderse (ej. batería en un PC sin batería)
+    Y la barra no lo escondió por falta de espacio.
+    """
+    widget.setVisible(not getattr(widget, "oculto_propio", False) and not getattr(widget, "sin_espacio", False))
+
+
 def abrir(ruta):
     """Abre un programa, archivo o enlace como si le hicieras doble clic."""
     try:
         os.startfile(ruta)   # solo existe en Windows
     except Exception as error:
-        print(f"[mibarra] No pude abrir {ruta}: {error}")
+        log.warning("No pude abrir %s: %s", ruta, error)
 
 
 class TrabajoRepetido(QObject):
@@ -109,6 +118,27 @@ class TrabajoRepetido(QObject):
             fin = time.monotonic() + espera
             while self.activo and time.monotonic() < fin:
                 time.sleep(0.25)
+
+
+class TrabajoUnaVez(QObject):
+    """Ejecuta una función UNA vez en un hilo aparte. Entrega (True, resultado) o (False, error)."""
+    listo = pyqtSignal(object)
+
+    def __init__(self, funcion):
+        super().__init__()
+        self.funcion = funcion
+
+    def empezar(self):
+        def trabajo():
+            try:
+                respuesta = (True, self.funcion())
+            except Exception as error:
+                respuesta = (False, error)
+            try:
+                self.listo.emit(respuesta)
+            except RuntimeError:
+                pass
+        threading.Thread(target=trabajo, daemon=True).start()
 
 
 # =============================================================================
@@ -282,10 +312,10 @@ class BateriaTile(Tile):
 
     def actualizar(self):
         b = psutil.sensors_battery()
-        if b is None:           # PC de escritorio: no tiene batería
-            self.hide()
+        self.oculto_propio = b is None      # PC de escritorio: no tiene batería
+        aplicar_visibilidad(self)
+        if b is None:
             return
-        self.show()
         enchufado = bool(b.power_plugged)
         self.poner(valor=f"{b.percent:.0f}%{' ⚡' if enchufado else ''}",
                    progreso=b.percent, alerta=b.percent <= 20 and not enchufado)
