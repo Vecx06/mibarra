@@ -13,6 +13,7 @@ Uso en cualquier archivo:
 """
 
 import logging
+import sys
 from logging.handlers import RotatingFileHandler
 
 import rutas
@@ -31,6 +32,7 @@ def configurar():
         log.addHandler(archivo)
     except OSError:
         pass
-    consola = logging.StreamHandler()
-    consola.setFormatter(formato)
-    log.addHandler(consola)
+    if sys.stderr is not None:          # el .exe sin consola no tiene stderr
+        consola = logging.StreamHandler()
+        consola.setFormatter(formato)
+        log.addHandler(consola)

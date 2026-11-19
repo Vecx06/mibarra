@@ -67,9 +67,9 @@ def test_barra_real_en_windows(tmp_path):
     capturas = Path(os.environ.get("MIBARRA_CAPTURAS", tmp_path))
     capturas.mkdir(parents=True, exist_ok=True)
     guion = textwrap.dedent(f"""
-        import json, sys
+        import base64, json, sys
         sys.path.insert(0, {str(Path(__file__).resolve().parent.parent)!r})
-        from PyQt6.QtCore import QTimer
+        from PyQt6.QtCore import QBuffer, QIODevice, QTimer
         from PyQt6.QtWidgets import QApplication
         import config, estilo, sistema_windows as sw
         from dock import Dock
@@ -81,14 +81,26 @@ def test_barra_real_en_windows(tmp_path):
         resultado = {{}}
         def revisar(nombre):
             barra = sw.BarraWindows._ventanas()[0]
+            pantalla = app.primaryScreen().geometry()
+            animacion = getattr(d, "_animacion", None)
             resultado[nombre] = {{
                 "barra_windows_visible": bool(sw.user32.IsWindowVisible(barra)),
                 "espacio_reservado": d.espacio.activo,
                 "geometria": [d.x(), d.y(), d.width(), d.height()],
+                "pantalla": [pantalla.width(), pantalla.height(), app.primaryScreen().devicePixelRatio()],
+                "medida_contenido": d._medir(),
+                "sin_espacio": d.widgets_sin_espacio,
+                "animando": bool(animacion and animacion.state() == animacion.State.Running),
                 "vidrio": d.vidrio,
                 "fuente_iconos": estilo.fuente_iconos(),
             }}
-            app.primaryScreen().grabWindow(0).save({str(capturas)!r} + "/" + nombre + ".png")
+            completa = app.primaryScreen().grabWindow(0)
+            completa.save({str(capturas)!r} + "/" + nombre + ".png")
+            # Un recorte de la parte de abajo (donde está la barra), en texto, para verlo en el registro
+            recorte = completa.copy(0, completa.height() - 110, completa.width(), 110)
+            buffer = QBuffer(); buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+            recorte.save(buffer, "PNG")
+            print("CAPTURA_" + nombre + "=" + base64.b64encode(bytes(buffer.data())).decode())
         def paso2():
             revisar("oscuro")
             c["tema"] = "claro"; d.aplicar_config("todo")
@@ -102,7 +114,7 @@ def test_barra_real_en_windows(tmp_path):
     entorno = dict(os.environ)
     entorno.pop("QT_QPA_PLATFORM", None)          # ventanas reales
     proceso = subprocess.run([sys.executable, "-c", guion], capture_output=True, text=True, timeout=90, env=entorno)
-    print(proceso.stdout[-3000:], proceso.stderr[-3000:])
+    print(proceso.stdout, proceso.stderr[-3000:])
     linea = [x for x in proceso.stdout.splitlines() if x.startswith("RESULTADO=")]
     assert linea, "la barra no terminó bien"
     resultado = json.loads(linea[0].split("=", 1)[1])
