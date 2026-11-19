@@ -1,44 +1,27 @@
-# mibarra 1.3
+# mibarra 2.0
 
-## Novedades de la 1.3
-- **Barra centrada, como en Windows 11:** flota al medio y mide justo lo que ocupa su contenido, sin espacios vacíos. Si abres o cierras apps, crece o se achica con una animación.
-- Si prefieres la de antes: Ajustes › Apariencia › Forma › **Ancho completo**.
+Manual de uso. El historial completo de cambios está en `CHANGELOG.md`.
 
-## Novedades de la 1.2
-- **Tema claro** para la barra (y modo **Automático**, que sigue a Windows): Ajustes › Apariencia › Tema de la barra.
-- **9 widgets nuevos** (agrégalos en Ajustes › Widgets):
-  - **Comando:** escribe y aprieta Enter. `notepad` abre el programa, `youtube.com` abre la página, `?gatos` busca en Google, `=15*3` calcula.
-  - **Notas:** una nota rápida que se guarda sola (en `notas.txt`).
-  - **Conexiones:** Wi-Fi (con el nombre de tu red), Bluetooth y modo avión.
-  - **Claro / oscuro:** cambia TODO Windows entre modo claro y oscuro.
-  - **Capturas:** recortar (Win+Shift+S), capturar la pantalla entera y abrir la carpeta de capturas.
-  - **Anillo de batería** y **Anillo de CPU.**
-  - **Moneda:** conversor (por ejemplo 1 USD → CLP). Clic para invertir. Se configura en Ajustes › Moneda.
-  - **Almacenamiento:** GB libres en tu disco.
+## Novedades de la 2.0
+- **Instalador** para Windows: ya no necesitas Python.
+- **Guardián:** si mibarra se cierra mal, la barra de Windows vuelve sola.
+- **Bienvenida** la primera vez, **aviso de versiones nuevas** y **respaldar / importar / restablecer** ajustes (Ajustes › Acerca de).
+- Si no caben todos los widgets, se esconden los que sobran (el reloj siempre queda).
+- Registro de errores (`mibarra.log`) y botón para reportar problemas.
 
+## Instalación
 
-## Novedades de la 1.1
-- **Ajustes propios estilo Apple**: clic derecho en un espacio vacío de la barra → *Ajustes de mibarra…*. Ya no se abre el Bloc de notas.
-- **Galería de widgets** con buscador: agrega, quita y ordena widgets con un clic.
-- **Modo edición**: mientras los Ajustes están abiertos, cada widget de la barra muestra un círculo rojo **−** para quitarlo.
-- **Los cambios se aplican al tiro**, sin reiniciar.
-- **Widgets nuevos**: Disco, Progreso del año y Enfoque (temporizador de 25 min para estudiar).
-- **Arreglado**: la barra ahora sí se esconde con videos de YouTube (u otros) en pantalla completa.
-- Clima: busca tu ciudad por nombre, sin escribir latitud ni longitud.
+**Lo más fácil:** descarga `mibarra-X.Y.Z-instalador.exe` desde https://github.com/Vecx06/mibarra/releases/latest y ábrelo.
 
-Una barra para Windows 10 y 11 que reemplaza a la barra de tareas: tus apps, las ventanas abiertas y widgets en vivo, todo en una sola barra.
-
-## Instalación (una sola vez)
-
-1. Instala **Python** desde python.org. Al instalarlo, **marca la casilla "Add Python to PATH"**.
-2. Descomprime esta carpeta donde quieras, por ejemplo en `Documentos\mibarra`.
-3. Haz doble clic en **`instalar.bat`** y espera a que diga "Listo".
+**Con Python (esta carpeta):**
+1. Instala **Python** desde python.org y **marca "Add Python to PATH"**.
+2. Haz doble clic en **`instalar.bat`** y espera a que diga "Listo".
 
 ## Uso
 
-- **Abrir:** doble clic en **`iniciar.bat`**.
+- **Abrir:** desde el menú Inicio (si la instalaste) o con doble clic en **`iniciar.bat`** (con Python).
 - **Cerrar:** clic derecho en un espacio vacío de la barra → **Cerrar mibarra**. La barra de Windows vuelve sola.
-- **Si algo sale mal** y la barra de Windows quedó escondida: doble clic en **`restaurar_barra.bat`**.
+- **Si algo sale mal** y la barra de Windows quedó escondida: normalmente vuelve sola (el guardián). Si no, usa **Inicio › Restaurar barra de Windows** (instalada) o **`restaurar_barra.bat`** (con Python).
 
 ## Qué hace cada cosa
 
@@ -82,7 +65,9 @@ Ojo: en JSON los textos van entre comillas dobles, `true`/`false` van en minúsc
 
 | Archivo | Qué contiene |
 |---|---|
-| `main.py` | El punto de partida: crea la app, carga los ajustes y abre la barra |
+| `main.py` | El punto de partida: crea la app, el guardián y `--restaurar` |
+| `version.py`, `rutas.py`, `registro.py` | Versión, dónde se guardan los archivos y registro de errores |
+| `actualizaciones.py`, `bienvenida.py`, `logo.py` | Aviso de versiones nuevas, bienvenida y logo |
 | `config.py` | Lee y guarda `config.json` |
 | `estilo.py` | Colores, letras y estilos de menús |
 | `dock.py` | La barra: inicio, íconos de apps, ubicación en pantalla, menús, modo edición |

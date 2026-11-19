@@ -320,8 +320,8 @@ class VistaPrevia(QWidget):
         p.end()
 
 
-def icono_lateral(color, simbolo):
-    """Cuadradito de color con un símbolo blanco (como los íconos de Ajustes del iPhone)."""
+def icono_lateral(color, codigo, respaldo):
+    """Cuadradito de color con un ícono blanco (como los íconos de Ajustes del iPhone)."""
     pixmap = QPixmap(44, 44)
     pixmap.fill(Qt.GlobalColor.transparent)
     p = QPainter(pixmap)
@@ -330,8 +330,9 @@ def icono_lateral(color, simbolo):
     p.setBrush(QColor(color))
     p.drawRoundedRect(QRectF(0, 0, 44, 44), 10, 10)
     p.setPen(QColor("white"))
-    p.setFont(estilo.fuente(24, negrita=True))
-    p.drawText(QRectF(0, 0, 44, 44), Qt.AlignmentFlag.AlignCenter, simbolo)
+    texto, fuente = estilo.icono(codigo, respaldo, 24)
+    p.setFont(fuente)
+    p.drawText(QRectF(0, 0, 44, 44), Qt.AlignmentFlag.AlignCenter, texto)
     p.end()
     return QIcon(pixmap)
 
@@ -404,13 +405,14 @@ class Buscador(QObject):
 # =============================================================================
 class Ajustes(QWidget):
     PAGINAS = [
-        ("widgets", "Widgets", "#0a84ff", "▦"),
-        ("apps", "Apps fijadas", "#ff9f0a", "★"),
-        ("apariencia", "Apariencia", "#bf5af2", "◐"),
-        ("comportamiento", "Comportamiento", "#8e8e93", "⚙"),
-        ("clima", "Clima", "#64d2ff", "☀"),
-        ("moneda", "Moneda", "#ffcc00", "$"),
-        ("acerca", "Acerca de", "#30d158", "i"),
+        # (clave, título, color, (código de ícono de Windows, símbolo de respaldo))
+        ("widgets", "Widgets", "#0a84ff", (0xE8A9, "▦")),
+        ("apps", "Apps fijadas", "#ff9f0a", (0xE718, "★")),
+        ("apariencia", "Apariencia", "#bf5af2", (0xE790, "◐")),
+        ("comportamiento", "Comportamiento", "#8e8e93", (0xE713, "⚙")),
+        ("clima", "Clima", "#64d2ff", (0xE706, "☀")),
+        ("moneda", "Moneda", "#ffcc00", (0xE8EF, "$")),
+        ("acerca", "Acerca de", "#30d158", (0xE946, "i")),
     ]
 
     def __init__(self, dock):
@@ -461,7 +463,7 @@ class Ajustes(QWidget):
             b = QPushButton(f"  {texto}")
             b.setObjectName("nav")
             b.setCheckable(True)
-            b.setIcon(icono_lateral(color, simbolo))
+            b.setIcon(icono_lateral(color, *simbolo))
             b.setIconSize(b.iconSize().scaled(22, 22, Qt.AspectRatioMode.KeepAspectRatio))
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.clicked.connect(lambda _, c=clave: self.ir_a(c))

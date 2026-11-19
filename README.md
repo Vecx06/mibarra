@@ -1,71 +1,139 @@
+<div align="center">
+
+<img src="recursos/logo.png" width="96" alt="Logo de mibarra">
+
 # mibarra
 
-Una barra para **Windows 10 y 11** que reemplaza a la barra de tareas: tus apps, las ventanas abiertas y widgets en vivo, todo en una sola barra. Hecha en **Python + PyQt6**, inspirada en docks como lumabar.
+**Una barra para Windows 10 y 11 con tus apps, las ventanas abiertas y widgets en vivo. Estilo Apple, gratis y de código abierto.**
 
-![Barra clara](docs/barra-clara.png)
-![Barra oscura](docs/barra-oscura.png)
+[![Pruebas](https://github.com/Vecx06/mibarra/actions/workflows/pruebas.yml/badge.svg)](https://github.com/Vecx06/mibarra/actions/workflows/pruebas.yml)
+[![Última versión](https://img.shields.io/github/v/release/Vecx06/mibarra?label=versi%C3%B3n)](https://github.com/Vecx06/mibarra/releases/latest)
+[![Licencia MIT](https://img.shields.io/badge/licencia-MIT-blue)](LICENSE)
+![Windows 10 y 11](https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4)
 
-## Qué trae
+[**⬇ Descargar**](https://github.com/Vecx06/mibarra/releases/latest) · [Novedades](CHANGELOG.md) · [Reportar un problema](https://github.com/Vecx06/mibarra/issues/new/choose)
 
-- **Apps fijadas y abiertas**, agrupadas por programa. Un punto indica que la app está abierta y una rayita de color, que es la ventana activa.
-- **21 widgets en vivo:** comando (abre programas, páginas, busca o calcula), notas, Wi-Fi/Bluetooth/modo avión, claro/oscuro de Windows, capturas de pantalla, anillos de batería y CPU, conversor de moneda, almacenamiento, música, clima, velocidad de internet, CPU, RAM, disco, batería, volumen, reloj con calendario, progreso del año y un temporizador de estudio (Enfoque).
-- **Centrada como en Windows 11**: mide justo lo que ocupa y crece o se achica con una animación al abrir y cerrar apps (o ancho completo, si prefieres).
-- **Tema claro, oscuro o automático** (sigue a Windows).
-- **Ajustes estilo Apple:** galería de widgets con buscador, apps fijadas, apariencia, comportamiento y clima. Los cambios se aplican al tiro.
-- **Modo edición:** mientras los Ajustes están abiertos, cada widget muestra un círculo rojo **−** para quitarlo.
-- **Efecto vidrio** (fondo borroso), color de acento a elección, barra abajo o arriba.
-- Se **esconde sola** con videos, juegos o presentaciones en pantalla completa.
-- **Reserva su espacio**, así que las ventanas maximizadas no quedan debajo de ella.
-- Al cerrarla, la barra de Windows vuelve exactamente como estaba.
+![mibarra en tema oscuro](docs/real-oscura.png)
+![mibarra en tema claro](docs/real-clara.png)
 
-| Galería de widgets | Comportamiento |
-|---|---|
-| ![Ajustes: widgets](docs/ajustes-widgets.png) | ![Ajustes: comportamiento](docs/ajustes-comportamiento.png) |
+<sub>Capturas reales tomadas en Windows por las pruebas automáticas del proyecto.</sub>
 
-| Apariencia | Moneda |
-|---|---|
-| ![Ajustes: apariencia](docs/ajustes-apariencia.png) | ![Ajustes: moneda](docs/ajustes-moneda.png) |
-
-![Modo edición](docs/barra-modo-edicion.png)
-
-> Las capturas usan apps y datos de ejemplo.
+</div>
 
 ## Descargar e instalar
 
-1. Instala [Python](https://www.python.org/downloads/). Al instalarlo, **marca "Add Python to PATH"**.
-2. Entra a **[la última versión](../../releases/latest)**, descarga **Source code (zip)** y descomprímelo.
-   (También sirve el botón verde **Code → Download ZIP** de esta página.)
-3. Haz doble clic en **`instalar.bat`**.
-4. Haz doble clic en **`iniciar.bat`**.
+1. Entra a **[la última versión](https://github.com/Vecx06/mibarra/releases/latest)**.
+2. Descarga **`mibarra-X.Y.Z-instalador.exe`** y ábrelo.
+3. Siguiente, siguiente, listo. No necesitas Python ni permisos de administrador.
 
-Para cerrarla: clic derecho en un espacio vacío de la barra → **Cerrar mibarra**.
-Si algo sale mal y la barra de Windows queda escondida: doble clic en **`restaurar_barra.bat`**.
+> **"Windows protegió tu PC":** sale porque mibarra es nueva y no está firmada (firmar un programa cuesta dinero).
+> Haz clic en **Más información → Ejecutar de todas formas**. El código está completo aquí para que cualquiera lo revise.
 
-El manual completo está en [LEEME.md](LEEME.md).
+**¿Sin instalar?** Descarga `mibarra-X.Y.Z-portable.zip`, descomprímelo y abre `mibarra.exe`.
 
-## Cómo está hecha
+## Qué trae
 
-| Archivo | Qué contiene |
+- **Centrada como en Windows 11:** mide justo lo que ocupa y se anima al abrir y cerrar apps. También puede ir de borde a borde, abajo o arriba.
+- **Tus apps:** fijadas y abiertas, agrupadas por programa. Un punto indica que está abierta y una rayita de color, que es la que estás usando.
+- **21 widgets en vivo** (tabla más abajo).
+- **Tema claro, oscuro o automático**, con efecto vidrio y el color de acento que elijas.
+- **Ajustes estilo Apple:** galería de widgets con buscador. Los cambios se aplican al tiro.
+- **Modo edición:** con los Ajustes abiertos, cada widget muestra un círculo rojo **−** para quitarlo.
+- **Se esconde** con videos, juegos o presentaciones en pantalla completa.
+- **Reserva su espacio:** las ventanas maximizadas no quedan debajo de ella.
+- **Segura:** al cerrarla, la barra de Windows vuelve exactamente como estaba. Y si mibarra se cae, un *guardián* la devuelve solo.
+
+| Galería de widgets | Apariencia |
 |---|---|
-| `main.py` | Punto de partida: crea la app, carga los ajustes y abre la barra |
-| `config.py` | Lee y guarda `config.json` |
-| `estilo.py` | Colores, letras y estilos de menús |
-| `dock.py` | La barra: inicio, íconos de apps, ubicación en pantalla, menús, modo edición |
-| `ajustes.py` | La ventana de Ajustes (interruptores, galería, buscador) |
-| `widgets.py` | Los widgets básicos (y las clases base `Caja` y `Tile`) |
-| `mas_widgets.py` | Widgets de la 1.2: comando, notas, conexiones, tema, capturas, anillos, moneda, almacenamiento |
-| `sistema_windows.py` | Todo lo que habla con Windows usando `ctypes`: ventanas abiertas, ocultar la barra, reservar espacio, efecto vidrio, teclas multimedia |
+| ![Ajustes: widgets](docs/ajustes-widgets.png) | ![Ajustes: apariencia](docs/ajustes-apariencia.png) |
 
-## Limitaciones conocidas
+<p align="center"><img src="docs/bienvenida.png" width="420" alt="Pantalla de bienvenida"><br><sub>La bienvenida, la primera vez que abres mibarra.</sub></p>
 
-- Funciona solo en el monitor principal.
-- Los íconos de la bandeja (wifi, Discord, Steam…) no aparecen en mibarra; el botón **⌃** muestra la barra de Windows un rato.
-- Las apps de la Microsoft Store aparecen con un ícono de letra.
+### Widgets
 
-## Actualizar
+| Widget | Qué hace |
+|---|---|
+| **Reloj** | Hora y fecha. Clic: calendario |
+| **Comando** | Escribe y aprieta Enter: `notepad` abre el programa, `youtube.com` la página, `?gatos` busca en Google, `=15*3` calcula |
+| **Notas** | Una nota rápida que se guarda sola |
+| **Enfoque** | Temporizador de 25 minutos para estudiar |
+| **Conexiones** | Wi-Fi (con el nombre de tu red), Bluetooth y modo avión |
+| **Claro / oscuro** | Cambia todo Windows entre modo claro y oscuro |
+| **Capturas** | Recortar, capturar la pantalla y abrir la carpeta de capturas |
+| **Música** | Canción que suena, con anterior, pausa y siguiente |
+| **Volumen** | Rueda del mouse para subir y bajar. Clic: silenciar |
+| **Clima** | Temperatura de tu ciudad |
+| **Moneda** | Conversor (por ejemplo 1 USD → CLP). Clic: invertir |
+| **CPU, RAM, Red** | Uso del PC y velocidad de internet |
+| **Anillos de CPU y batería** | Lo mismo, como anillos que se llenan |
+| **Disco, Almacenamiento** | Espacio usado y libre |
+| **Batería** | Carga y tiempo restante (solo notebooks) |
+| **Progreso del año** | Cuánto del año ya pasó |
+| **Bandeja** | Muestra un rato la barra de Windows (wifi, íconos ocultos, notificaciones) |
 
-Descarga el zip de la nueva versión, cierra mibarra y copia los archivos encima de tu carpeta (elige "Reemplazar"). Tu `config.json` y tus notas no se tocan.
+## Cómo se usa
+
+- **Ajustes:** clic derecho en un espacio vacío de la barra → **Ajustes de mibarra…**
+- **Agregar widgets:** Ajustes › Widgets › **＋ Agregar**.
+- **Fijar una app:** clic derecho sobre su ícono → **Fijar al dock**.
+- **Ayuda en cualquier parte:** pasa el mouse sobre algo y te explica qué hace.
+
+## Preguntas frecuentes
+
+**La barra de Windows quedó escondida.** Abre **Inicio › Restaurar barra de Windows**. Normalmente no hace falta, porque el guardián lo hace solo.
+
+**¿Cómo la desinstalo?** Desde *Configuración › Aplicaciones*, como cualquier programa. La barra de Windows vuelve a la normalidad.
+
+**¿Dónde están mis ajustes y notas?** En `%APPDATA%\mibarra`, o en Ajustes › Acerca de › **Abrir carpeta**. Desde ahí también puedes respaldarlos.
+
+**¿Funciona con dos monitores?** Por ahora la barra aparece solo en el monitor principal.
+
+**Los íconos de la bandeja (Discord, Steam…) no aparecen.** Usa el widget **Bandeja** para ver la barra de Windows un rato.
+
+## Privacidad
+
+mibarra no tiene cuentas ni telemetría y no envía datos tuyos a ningún servidor propio. Solo se conecta a internet para:
+- el **clima**, con [Open-Meteo](https://open-meteo.com) y la ciudad que elijas;
+- la **moneda**, con [open.er-api.com](https://open.er-api.com) y las monedas que elijas;
+- revisar si hay **versiones nuevas** en GitHub (se puede desactivar).
+
+Tus notas y ajustes se quedan en tu PC.
+
+## Para desarrolladores
+
+```bat
+git clone https://github.com/Vecx06/mibarra
+cd mibarra
+python -m pip install -r requirements.txt -r requirements-opcional.txt
+python main.py
+```
+
+- **Pruebas:** `python -m pytest`. En GitHub corren en un Windows real con cada cambio: abren la barra de verdad, revisan que la barra de Windows vuelva a como estaba y sacan las capturas de esta página.
+- **Crear el `.exe`:** `python construir.py` (PyInstaller). El instalador se arma con [Inno Setup](https://jrsoftware.org/isinfo.php) (`instalador.iss`). Cuando se publica una versión, GitHub hace las dos cosas solo.
+- Detalles del código, cómo agregar un widget y cómo publicar: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Hecho en Python con PyQt6, psutil y ctypes.
+
+## Lo que viene
+
+- Soporte para varios monitores
+- Vista previa de las ventanas al pasar el mouse
+- Arrastrar para reordenar apps y widgets en la barra
+- Íconos reales para las apps de la Microsoft Store
+
+¿Tienes una idea? [Propónla aquí](https://github.com/Vecx06/mibarra/issues/new/choose).
 
 ## Licencia
 
-[MIT](LICENSE): puedes usarlo, modificarlo y compartirlo, siempre que mantengas el aviso de autor.
+[MIT](LICENSE) © Vecx06. Puedes usarlo, modificarlo y compartirlo, siempre que mantengas el aviso de autor.
+
+---
+
+<details>
+<summary><b>English</b></summary>
+
+**mibarra** is a free, open-source taskbar replacement for Windows 10 and 11: pinned and running apps plus 21 live widgets
+(weather, music, network, CPU/RAM, notes, quick launcher, currency converter, Wi-Fi/Bluetooth toggles and more),
+centered like Windows 11, with light/dark themes and an Apple-style settings window.
+Download the installer from [Releases](https://github.com/Vecx06/mibarra/releases/latest). The UI is in Spanish.
+</details>

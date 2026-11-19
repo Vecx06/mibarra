@@ -1,16 +1,18 @@
-CÓMO ACTUALIZAR mibarra a la 1.3
-================================
+CÓMO ACTUALIZAR mibarra
+=======================
 
-Tu config.json NO viene en esta actualización, así que tus apps fijadas,
-widgets y colores se mantienen.
+OPCIÓN A — Pasarte al instalador (recomendado desde la 2.0)
+1. Cierra mibarra (clic derecho en la barra -> Cerrar mibarra).
+2. Descarga mibarra-X.Y.Z-instalador.exe desde
+   https://github.com/Vecx06/mibarra/releases/latest y ábrelo.
+3. Para recuperar tus ajustes: abre mibarra -> Ajustes -> Acerca de -> Importar…
+   y elige el config.json de tu carpeta antigua. (Tus notas: copia notas.txt a
+   la carpeta que abre "Abrir carpeta" en esa misma página.)
+4. Ya puedes borrar la carpeta antigua.
 
-1. Cierra mibarra: clic derecho en un espacio vacío de la barra -> "Cerrar mibarra".
-2. Abre este zip y copia TODOS los archivos de la carpeta "mibarra"
-   dentro de tu carpeta mibarra de siempre (donde está tu config.json).
-3. Cuando Windows pregunte, elige "Reemplazar los archivos en el destino".
-4. (Si vienes de la 1.0 o 1.1) Vuelve a correr instalar.bat: instala lo necesario
-   para que los botones de Wi-Fi y Bluetooth enciendan y apaguen las radios.
-   Sin eso, esos botones abren los ajustes de Windows.
-5. Abre mibarra con iniciar.bat.
-6. La barra ahora aparece centrada (como en Windows 11). Para volver a la de
-   ancho completo: Ajustes de mibarra -> Apariencia -> Forma -> Ancho completo.
+OPCIÓN B — Seguir usando la versión con Python
+1. Cierra mibarra.
+2. Copia TODOS los archivos de este zip (incluida la carpeta "recursos")
+   dentro de tu carpeta mibarra de siempre y elige "Reemplazar".
+   Tu config.json y tus notas no se tocan.
+3. Abre mibarra con iniciar.bat.

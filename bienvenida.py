@@ -41,7 +41,7 @@ class VentanaFlotante(QWidget):
 
 class Bienvenida(VentanaFlotante):
     def __init__(self, dock):
-        super().__init__(600, 720)
+        super().__init__(600, 640)
         self.dock = dock
         self.setWindowTitle("Bienvenido a mibarra")
         capa = QVBoxLayout(self.ventana)
