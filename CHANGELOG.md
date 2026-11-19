@@ -3,6 +3,24 @@
 Todas las versiones de mibarra. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/)
 y los números siguen [versionado semántico](https://semver.org/lang/es/).
 
+## [2.1.0] — 2026-11-18
+
+### Agregado
+- **Widgets de inteligencia artificial:**
+  - **Límites de Claude:** cuánto llevas de tu sesión de 5 horas y de la semana, y cuándo se renueva cada una
+    (usa la sesión de Claude Code de tu PC).
+  - **Tokens de Claude Code:** los tokens que llevas hoy, leídos de los registros de Claude Code en tu PC.
+  - **Límites de Codex (ChatGPT):** tu sesión de 5 horas y la semana, leídos de los registros de Codex.
+  - **Aviso** cuando pasas el 90% de tu sesión de 5 horas (se puede desactivar).
+- **Buscador rápido** estilo Spotlight con **Alt + Espacio**: programas del menú Inicio, carpetas, ajustes de
+  Windows, cuentas (Enter copia el resultado) y páginas web. Aprende qué abres más.
+- **Atajos de teclado** que funcionan en cualquier parte: abrir el buscador y mostrar/ocultar la barra
+  (**Ctrl + Alt + B**). Se pueden cambiar en Ajustes › Comportamiento.
+- **Ocultar automáticamente:** la barra se esconde y aparece al llevar el mouse al borde.
+- El **botón de inicio** puede abrir el buscador de mibarra en vez del menú de Windows.
+- **Gestos en los íconos de apps:** clic con la rueda abre otra ventana; girar la rueda pasa de una ventana a otra.
+- **Enfoque:** elige 15, 25, 45, 60 o 90 minutos (clic derecho) y te avisa al terminar.
+
 ## [2.0.0] — 2026-11-18
 
 ### Agregado
@@ -51,5 +69,6 @@ y los números siguen [versionado semántico](https://semver.org/lang/es/).
 - Primera versión: botón de inicio, apps fijadas y abiertas, música, clima, red, CPU, RAM, batería,
   volumen, reloj con calendario, efecto vidrio, reserva de espacio y ocultar la barra de Windows.
 
+[2.1.0]: https://github.com/Vecx06/mibarra/releases/tag/v2.1.0
 [2.0.0]: https://github.com/Vecx06/mibarra/releases/tag/v2.0.0
 [1.3.0]: https://github.com/Vecx06/mibarra/releases/tag/v1.3

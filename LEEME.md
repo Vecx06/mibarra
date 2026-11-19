@@ -1,6 +1,11 @@
-# mibarra 2.0
+# mibarra 2.1
 
 Manual de uso. El historial completo de cambios está en `CHANGELOG.md`.
+
+## Novedades de la 2.1
+- **Widgets de IA:** límites de Claude (sesión de 5 h y semana), tokens de Claude Code hoy y límites de Codex.
+- **Buscador rápido:** Alt + Espacio. **Mostrar/ocultar la barra:** Ctrl + Alt + B.
+- **Ocultar automáticamente**, botón de inicio que abre el buscador, gestos con la rueda en las apps y Enfoque con minutos a elección.
 
 ## Novedades de la 2.0
 - **Instalador** para Windows: ya no necesitas Python.

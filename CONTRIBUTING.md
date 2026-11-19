@@ -35,13 +35,15 @@ GitHub corre lo mismo automáticamente (en Windows) con cada cambio.
 | `widgets.py`, `mas_widgets.py` | Los widgets |
 | `ajustes.py`, `bienvenida.py` | Ventanas de Ajustes, bienvenida y avisos |
 | `actualizaciones.py` | Revisar si hay versión nueva |
+| `ia.py`, `widgets_ia.py` | Datos y widgets de Claude y Codex |
+| `buscador.py`, `atajos.py` | Buscador rápido y atajos de teclado globales |
 | `sistema_windows.py` | Todo lo que habla con Windows (`ctypes`) |
 | `logo.py` | Dibuja el logo |
 | `construir.py`, `instalador.iss` | Arman el `.exe` y el instalador |
 
 ## Agregar un widget nuevo
 1. Crea la clase en `mas_widgets.py` (puedes basarte en `Tile` o `Caja`) con un método `actualizar()` y un parámetro `demo`.
-2. Agrégala a `CREADORES` en `mas_widgets.py`.
+2. Agrégala a `CREADORES` en `mas_widgets.py` (o a `CREADORES_IA` en `widgets_ia.py`).
 3. Agrega su nombre a `WIDGETS_VALIDOS` en `config.py` y una línea al `CATALOGO` en `ajustes.py`.
 4. Corre `python -m pytest`: hay una prueba que revisa que esas tres listas coincidan.
 

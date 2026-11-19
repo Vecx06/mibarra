@@ -35,7 +35,9 @@
 
 - **Centrada como en Windows 11:** mide justo lo que ocupa y se anima al abrir y cerrar apps. También puede ir de borde a borde, abajo o arriba.
 - **Tus apps:** fijadas y abiertas, agrupadas por programa. Un punto indica que está abierta y una rayita de color, que es la que estás usando.
-- **21 widgets en vivo** (tabla más abajo).
+- **24 widgets en vivo** (tabla más abajo), incluidos **tus límites de Claude y Codex** y los tokens de Claude Code.
+- **Buscador rápido** con **Alt + Espacio**, estilo Spotlight: programas, carpetas, ajustes, cuentas y webs.
+- **Atajos de teclado** y opción de **ocultarse sola** para tener la pantalla entera.
 - **Tema claro, oscuro o automático**, con efecto vidrio y el color de acento que elijas.
 - **Ajustes estilo Apple:** galería de widgets con buscador. Los cambios se aplican al tiro.
 - **Modo edición:** con los Ajustes abiertos, cada widget muestra un círculo rojo **−** para quitarlo.
@@ -51,8 +53,13 @@
 
 ### Widgets
 
+<p align="center"><img src="docs/widgets-ia.png" alt="Widgets de Claude y Codex"><br><sub>Widgets de IA (datos de ejemplo).</sub></p>
+
 | Widget | Qué hace |
 |---|---|
+| **Límites de Claude** | Cuánto llevas de tu sesión de 5 horas y de la semana, y cuándo se renueva. Te avisa al pasar el 90% |
+| **Tokens de Claude Code** | Los tokens que llevas hoy en Claude Code |
+| **Límites de Codex** | Tu sesión de 5 horas y la semana en Codex (ChatGPT) |
 | **Reloj** | Hora y fecha. Clic: calendario |
 | **Comando** | Escribe y aprieta Enter: `notepad` abre el programa, `youtube.com` la página, `?gatos` busca en Google, `=15*3` calcula |
 | **Notas** | Una nota rápida que se guarda sola |
@@ -73,6 +80,9 @@
 
 ## Cómo se usa
 
+- **Buscar y abrir cualquier cosa:** **Alt + Espacio**, escribe y Enter.
+- **Esconder o mostrar la barra:** **Ctrl + Alt + B** (los atajos se cambian en Ajustes › Comportamiento).
+- **Apps:** clic para abrir o traer al frente, **clic con la rueda** para otra ventana, **girar la rueda** para pasar entre sus ventanas.
 - **Ajustes:** clic derecho en un espacio vacío de la barra → **Ajustes de mibarra…**
 - **Agregar widgets:** Ajustes › Widgets › **＋ Agregar**.
 - **Fijar una app:** clic derecho sobre su ícono → **Fijar al dock**.
@@ -88,6 +98,12 @@
 
 **¿Funciona con dos monitores?** Por ahora la barra aparece solo en el monitor principal.
 
+**El widget de Claude dice "Instala Claude Code e inicia sesión".** Los límites del plan se leen de la sesión de
+[Claude Code](https://claude.com/claude-code). Si usas solo claude.ai, al hacer clic en el widget se abre tu página de uso.
+
+**Alt + Espacio no abre el buscador.** Puede que otro programa (por ejemplo PowerToys) ya use ese atajo:
+cámbialo en Ajustes › Comportamiento.
+
 **Los íconos de la bandeja (Discord, Steam…) no aparecen.** Usa el widget **Bandeja** para ver la barra de Windows un rato.
 
 ## Privacidad
@@ -95,7 +111,11 @@
 mibarra no tiene cuentas ni telemetría y no envía datos tuyos a ningún servidor propio. Solo se conecta a internet para:
 - el **clima**, con [Open-Meteo](https://open-meteo.com) y la ciudad que elijas;
 - la **moneda**, con [open.er-api.com](https://open.er-api.com) y las monedas que elijas;
-- revisar si hay **versiones nuevas** en GitHub (se puede desactivar).
+- revisar si hay **versiones nuevas** en GitHub (se puede desactivar);
+- los **límites de Claude**: usa la sesión que Claude Code ya guardó en tu PC solo para preguntarle a Anthropic
+  (`api.anthropic.com`) cuánto llevas usado. Ese permiso no se guarda, no se anota y no se envía a nadie más.
+
+Los **tokens de Claude Code** y los **límites de Codex** se leen de archivos de tu propio PC, sin internet.
 
 Tus notas y ajustes se quedan en tu PC.
 
@@ -132,8 +152,9 @@ Hecho en Python con PyQt6, psutil y ctypes.
 <details>
 <summary><b>English</b></summary>
 
-**mibarra** is a free, open-source taskbar replacement for Windows 10 and 11: pinned and running apps plus 21 live widgets
-(weather, music, network, CPU/RAM, notes, quick launcher, currency converter, Wi-Fi/Bluetooth toggles and more),
+**mibarra** is a free, open-source taskbar replacement for Windows 10 and 11: pinned and running apps plus 24 live widgets
+(Claude & Codex usage limits, Claude Code tokens, weather, music, network, CPU/RAM, notes, currency converter,
+Wi-Fi/Bluetooth toggles and more), a Spotlight-style launcher (Alt+Space), global shortcuts, auto-hide,
 centered like Windows 11, with light/dark themes and an Apple-style settings window.
 Download the installer from [Releases](https://github.com/Vecx06/mibarra/releases/latest). The UI is in Spanish.
 </details>

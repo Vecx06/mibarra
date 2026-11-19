@@ -76,8 +76,8 @@ def test_barra_real_en_windows(tmp_path):
         app = QApplication(sys.argv)
         app.setStyleSheet(estilo.hoja_global())
         c = config.por_defecto()
-        c.update({{"widgets": ["claude_limites", "codex_limites", "claude_tokens", "enfoque", "conexiones",
-                              "cpu_anillo", "moneda", "clima", "reloj"]}})
+        c.update({{"widgets": ["capturas", "comando", "conexiones", "claude_limites", "codex_limites",
+                              "claude_tokens", "clima", "reloj"]}})
         resultado = {{}}
         def revisar(nombre):
             barra = sw.BarraWindows._ventanas()[0]

@@ -27,6 +27,7 @@ from PyQt6.QtWidgets import (QApplication, QFileIconProvider, QFrame, QGraphicsD
 import config as configuracion
 import estilo
 import sistema_windows as sw
+from ajustes import icono_lateral
 from widgets import abrir
 
 PALABRAS_IGNORADAS = ("uninstall", "desinstalar", "readme", "léame", "leame", "help", "ayuda", "license",
@@ -320,9 +321,15 @@ class Buscador(QWidget):
             if r["accion"] == "abrir" and os.path.exists(r["valor"]):
                 self._iconos[clave] = self._proveedor.icon(QFileInfo(r["valor"]))
             elif r["accion"] == "copiar":
-                self._iconos[clave] = _icono_generico("#ff9f0a", "=")
+                self._iconos[clave] = icono_lateral("#ff9f0a", 0xE8EF, "=")        # calculadora
             elif r["accion"] == "web":
-                self._iconos[clave] = _icono_generico("#0a84ff", "↗")
+                self._iconos[clave] = icono_lateral("#0a84ff", 0xE774, "↗")       # globo
+            elif str(r["valor"]).startswith("ms-settings:"):
+                self._iconos[clave] = icono_lateral("#8e8e93", 0xE713, "⚙")       # engranaje
+            elif str(r["valor"]).startswith("shell:"):
+                self._iconos[clave] = icono_lateral("#0a84ff", 0xE8B7, "📁")      # carpeta
+            elif r["detalle"] == "Sistema":
+                self._iconos[clave] = icono_lateral("#5e5ce6", 0xE7EF, "⚙")
             else:
                 self._iconos[clave] = _icono_generico("#8e8e93", r["nombre"][:1].upper())
         return self._iconos[clave]
@@ -337,7 +344,9 @@ class Buscador(QWidget):
         if self.resultados:
             self.lista.setCurrentRow(0)
         filas = min(len(self.resultados), 9)
-        self.lista.setFixedHeight(filas * 42 + (6 if filas else 0))
+        # Medimos cada fila de verdad (en Windows con zoom al 125 % o 150 % son más altas)
+        alto = sum(self.lista.sizeHintForRow(i) for i in range(filas)) + 2 * self.lista.frameWidth() + 4
+        self.lista.setFixedHeight(alto if filas else 0)
         self.lista.setVisible(bool(filas))
         self.adjustSize()
 

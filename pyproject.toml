@@ -1,6 +1,6 @@
 [project]
 name = "mibarra"
-version = "2.0.0"
+version = "2.1.0"
 description = "Una barra para Windows 10 y 11 con apps, ventanas abiertas y widgets en vivo."
 readme = "README.md"
 license = { text = "MIT" }
