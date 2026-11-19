@@ -6,6 +6,8 @@ on:
   release:
     types: [published]
   workflow_dispatch:
+  push:
+    branches: [v2]   # temporal, para probar la construcción
 
 permissions:
   contents: write
