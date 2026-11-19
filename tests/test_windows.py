@@ -101,10 +101,31 @@ def test_barra_real_en_windows(tmp_path):
             buffer = QBuffer(); buffer.open(QIODevice.OpenModeFlag.WriteOnly)
             recorte.save(buffer, "PNG")
             print("CAPTURA_" + nombre + "=" + base64.b64encode(bytes(buffer.data())).decode())
+        def en_texto(nombre, imagen):
+            buffer = QBuffer(); buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+            imagen.save(buffer, "PNG")
+            print("CAPTURA_" + nombre + "=" + base64.b64encode(bytes(buffer.data())).decode())
         def paso2():
             revisar("oscuro")
             c["tema"] = "claro"; d.aplicar_config("todo")
-            QTimer.singleShot(1500, lambda: (revisar("claro"), app.quit()))
+            QTimer.singleShot(1500, paso3)
+        def paso3():
+            revisar("claro")
+            d.abrir_ajustes("widgets")
+            QTimer.singleShot(1500, paso4)
+        def paso4():
+            en_texto("ajustes_widgets", d.ventana_ajustes.grab())
+            d.ventana_ajustes.ir_a("apariencia")
+            QTimer.singleShot(800, paso5)
+        def paso5():
+            en_texto("ajustes_apariencia", d.ventana_ajustes.grab())
+            d.ventana_ajustes.close()
+            d.mostrar_bienvenida()
+            QTimer.singleShot(1200, paso6)
+        def paso6():
+            en_texto("bienvenida", d._bienvenida.grab())
+            d._bienvenida.hide()
+            app.quit()
         d = Dock(c); d.show(); d.iniciar()
         app.aboutToQuit.connect(d.limpiar)
         QTimer.singleShot(3000, paso2)

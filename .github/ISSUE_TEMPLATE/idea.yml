@@ -1,0 +1,14 @@
+name: Proponer una idea
+description: Un widget nuevo, una mejora, algo que te gustaría
+labels: ["idea"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: ¿Cuál es tu idea?
+    validations:
+      required: true
+  - type: textarea
+    id: para_que
+    attributes:
+      label: ¿Para qué te serviría?

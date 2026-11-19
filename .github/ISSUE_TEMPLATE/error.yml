@@ -1,0 +1,44 @@
+name: Reportar un error
+description: Algo no funciona como debería
+labels: ["error"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ¡Gracias por avisar! Si la barra de Windows quedó escondida, abre **Inicio › Restaurar barra de Windows**.
+  - type: textarea
+    id: que_paso
+    attributes:
+      label: ¿Qué pasó?
+      description: Cuéntalo con tus palabras. Si puedes, agrega una captura de pantalla.
+    validations:
+      required: true
+  - type: textarea
+    id: pasos
+    attributes:
+      label: ¿Cómo hacer que pase de nuevo?
+      placeholder: |
+        1. Abrí los Ajustes
+        2. Agregué el widget Clima
+        3. ...
+  - type: input
+    id: version
+    attributes:
+      label: Versión de mibarra
+      description: Está en Ajustes › Acerca de.
+      placeholder: "2.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: windows
+    attributes:
+      label: Windows
+      options: ["Windows 11", "Windows 10"]
+    validations:
+      required: true
+  - type: textarea
+    id: registro
+    attributes:
+      label: Registro de errores
+      description: Ajustes › Acerca de › Ver registro. Copia aquí las últimas líneas.
+      render: text
