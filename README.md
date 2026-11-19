@@ -45,6 +45,8 @@
 - **Reserva su espacio:** las ventanas maximizadas no quedan debajo de ella.
 - **Segura:** al cerrarla, la barra de Windows vuelve exactamente como estaba. Y si mibarra se cae, un *guardián* la devuelve solo.
 
+<p align="center"><img src="docs/buscador.png" width="560" alt="Buscador rápido"><br><sub>El buscador rápido (Alt + Espacio).</sub></p>
+
 | Galería de widgets | Apariencia |
 |---|---|
 | ![Ajustes: widgets](docs/ajustes-widgets.png) | ![Ajustes: apariencia](docs/ajustes-apariencia.png) |
